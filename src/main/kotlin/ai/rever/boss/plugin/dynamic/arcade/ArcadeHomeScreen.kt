@@ -25,7 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ArcadeHomeScreen(onPlay2048: () -> Unit) {
+fun ArcadeHomeScreen(
+    onPlay2048: () -> Unit,
+    onPlayMirrorDash: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -47,7 +50,14 @@ fun ArcadeHomeScreen(onPlay2048: () -> Unit) {
             GameCard(
                 title = "2048",
                 subtitle = "Join tiles, chase the crown",
+                badge = { TileBadge("2048", ArcadeColors.Pink) },
                 onClick = onPlay2048,
+            )
+            GameCard(
+                title = "Mirror Dash",
+                subtitle = "One tap, two sparks, don't crash",
+                badge = { TileBadge("⟷", Color(0xFF7547EF)) },
+                onClick = onPlayMirrorDash,
             )
             ComingSoonCard()
         }
@@ -55,7 +65,25 @@ fun ArcadeHomeScreen(onPlay2048: () -> Unit) {
 }
 
 @Composable
-private fun GameCard(title: String, subtitle: String, onClick: () -> Unit) {
+private fun TileBadge(glyph: String, background: Color) {
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+    }
+}
+
+@Composable
+private fun GameCard(
+    title: String,
+    subtitle: String,
+    badge: @Composable () -> Unit,
+    onClick: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .width(180.dp)
@@ -66,15 +94,7 @@ private fun GameCard(title: String, subtitle: String, onClick: () -> Unit) {
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(ArcadeColors.Pink),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(title, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-        }
+        badge()
         Spacer(Modifier.height(12.dp))
         Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ArcadeColors.Ink)
         Spacer(Modifier.height(4.dp))

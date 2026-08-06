@@ -8,6 +8,8 @@ import ai.rever.boss.plugin.api.TabTypeId
 import ai.rever.boss.plugin.api.TabTypeInfo
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048Screen
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashScreen
+import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.runtime.Composable
@@ -62,10 +64,12 @@ class ArcadeTabComponent(
     // Created on first play and kept for the tab's lifetime, so hopping
     // Home <-> game never resets a run in progress.
     private var game2048: Game2048ViewModel? = null
+    private var mirrorDash: MirrorDashViewModel? = null
 
     init {
         lifecycle.doOnDestroy {
             game2048?.onDisposed()
+            mirrorDash?.onDisposed()
             componentScope.cancel()
         }
     }
@@ -73,21 +77,33 @@ class ArcadeTabComponent(
     private fun game2048(): Game2048ViewModel =
         game2048 ?: Game2048ViewModel(componentScope, services).also { game2048 = it }
 
+    private fun mirrorDash(): MirrorDashViewModel =
+        mirrorDash ?: MirrorDashViewModel(componentScope, services).also { mirrorDash = it }
+
     @Composable
     override fun Content() {
         ArcadeBackground {
             when (screen) {
                 ArcadeScreen.Home -> ArcadeHomeScreen(
                     onPlay2048 = { screen = ArcadeScreen.Game2048 },
+                    onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
                 )
                 ArcadeScreen.Game2048 -> Game2048Screen(
                     viewModel = game2048(),
                     leaderboard = services.leaderboard,
                     onBack = { screen = ArcadeScreen.Home },
                 )
+                ArcadeScreen.MirrorDash -> MirrorDashScreen(
+                    viewModel = mirrorDash(),
+                    leaderboard = services.leaderboard,
+                    onBack = {
+                        mirrorDash?.pauseIfPlaying()
+                        screen = ArcadeScreen.Home
+                    },
+                )
             }
         }
     }
 }
 
-enum class ArcadeScreen { Home, Game2048 }
+enum class ArcadeScreen { Home, Game2048, MirrorDash }

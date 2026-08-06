@@ -35,12 +35,18 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 ├── ArcadeHomeScreen.kt       # game picker
 ├── LeaderboardService.kt     # Supabase RPC client (arcade_* functions)
 ├── LeaderboardOverlay.kt     # top-10 overlay
-└── game2048/
-    ├── Game2048Logic.kt      # pure rules (port of the HTML logic block)
-    ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil timing
-    ├── Game2048Board.kt      # board + animated tiles
-    ├── Game2048Chrome.kt     # header, score chips, veil
-    └── Game2048Screen.kt     # assembly + keyboard input
+├── game2048/
+│   ├── Game2048Logic.kt      # pure rules (port of the HTML logic block)
+│   ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil timing
+│   ├── Game2048Board.kt      # board + animated tiles
+│   ├── Game2048Chrome.kt     # header, score chips, veil
+│   └── Game2048Screen.kt     # assembly + keyboard input
+└── mirrordash/
+    ├── MirrorDashEngine.kt    # real-time simulation (port of the HTML update loop)
+    ├── MirrorDashViewModel.kt # phase machine + best/leaderboard bookkeeping
+    ├── MirrorDashRenderer.kt  # Compose Canvas frame rendering
+    ├── MirrorDashScreen.kt    # withFrameNanos loop + input
+    └── MirrorDashOverlays.kt  # HUD, start/pause/over cards
 ```
 
 Key patterns:

@@ -6,8 +6,15 @@ a native Compose port of the original single-file HTML game, keeping its feel
 
 - **Plugin ID**: `ai.rever.boss.plugin.dynamic.arcade`
 - **Type**: tab (open from the new-tab menu → Arcade)
-- **Games**: 2048 (arrow keys / WASD). The home screen is a picker, so new games
-  slot in as additional screens sharing the same leaderboard plumbing.
+- **Games**:
+  - **2048** — arrow keys / WASD.
+  - **Mirror Dash** — one-tap survival runner (tap/Space to reverse two mirrored
+    sparks, dodge gates, collect shards for combo). Native Compose Canvas port
+    of the original HTML canvas game; the WebAudio beeps did not carry over.
+
+  The home screen is a picker, so new games slot in as additional screens
+  sharing the same leaderboard plumbing (each game is a `game` key in
+  `arcade_scores` — no backend change needed per game).
 
 ## How scores work
 
