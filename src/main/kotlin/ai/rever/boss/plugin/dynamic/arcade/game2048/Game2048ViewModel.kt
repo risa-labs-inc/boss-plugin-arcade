@@ -59,6 +59,7 @@ class Game2048ViewModel(
     private var undoSnapshot: Snapshot? = null
     private var submittedScore = 0
     private var settleJob: Job? = null
+    private var pendingBestSubmit: Job? = null
 
     init {
         newGame()
@@ -75,7 +76,10 @@ class Game2048ViewModel(
         undoSnapshot = snapshotOf(s)
         val newScore = s.score + outcome.gained
         val newBest = maxOf(s.best, newScore)
-        if (newBest > s.best) persistBest(newBest)
+        if (newBest > s.best) {
+            persistBest(newBest)
+            scheduleBestSubmit(newScore)
+        }
 
         // Phase 1: slide. Absorbed tiles glide onto their survivor.
         _state.value = s.copy(
@@ -183,12 +187,29 @@ class Game2048ViewModel(
     }
 
     private fun submitRun() {
+        pendingBestSubmit?.cancel()
         val score = _state.value.score
         if (score <= submittedScore) return
         submittedScore = score
         // Submit on the plugin scope: it survives the tab being closed.
         services.pluginScope.launch {
             services.leaderboard.submitScore(GAME, score)
+        }
+    }
+
+    /**
+     * Sync a new personal best while the run is still going, so the leaderboard
+     * never depends on reaching game over (or on the app shutting down cleanly).
+     * Debounced: a climbing score keeps pushing the submit out until it plateaus.
+     */
+    private fun scheduleBestSubmit(score: Int) {
+        pendingBestSubmit?.cancel()
+        pendingBestSubmit = services.pluginScope.launch {
+            delay(2000)
+            if (score > submittedScore) {
+                submittedScore = score
+                services.leaderboard.submitScore(GAME, score)
+            }
         }
     }
 
