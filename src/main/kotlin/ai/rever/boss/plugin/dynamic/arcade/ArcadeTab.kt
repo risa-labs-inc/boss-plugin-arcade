@@ -1,0 +1,93 @@
+package ai.rever.boss.plugin.dynamic.arcade
+
+import ai.rever.boss.plugin.api.NewTabContext
+import ai.rever.boss.plugin.api.NewTabSpec
+import ai.rever.boss.plugin.api.TabComponentWithUI
+import ai.rever.boss.plugin.api.TabInfo
+import ai.rever.boss.plugin.api.TabTypeId
+import ai.rever.boss.plugin.api.TabTypeInfo
+import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048Screen
+import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.arkivanov.decompose.ComponentContext
+import com.arkivanov.essenty.lifecycle.doOnDestroy
+import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+
+object ArcadeTabType : TabTypeInfo {
+    override val typeId = TabTypeId(typeId = "arcade", pluginId = ARCADE_PLUGIN_ID)
+    override val displayName = "Arcade"
+    override val icon: ImageVector = Icons.Outlined.SportsEsports
+
+    override val newTabSpec = NewTabSpec(
+        order = 300,
+        inputLabel = "",
+        inputPlaceholder = "",
+        inputOptional = true,
+        confirmLabel = "Play",
+    )
+
+    override fun createTabInfo(input: String, context: NewTabContext): TabInfo = ArcadeTabInfo()
+}
+
+data class ArcadeTabInfo(
+    override val id: String = UUID.randomUUID().toString(),
+    override val title: String = "Arcade",
+) : TabInfo {
+    override val typeId = ArcadeTabType.typeId
+    override val icon: ImageVector = Icons.Outlined.SportsEsports
+}
+
+class ArcadeTabComponent(
+    override val config: TabInfo,
+    ctx: ComponentContext,
+    private val services: ArcadeServices,
+) : TabComponentWithUI, ComponentContext by ctx {
+
+    override val tabTypeInfo: TabTypeInfo = ArcadeTabType
+
+    private val componentScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private var screen by mutableStateOf<ArcadeScreen>(ArcadeScreen.Home)
+
+    // Created on first play and kept for the tab's lifetime, so hopping
+    // Home <-> game never resets a run in progress.
+    private var game2048: Game2048ViewModel? = null
+
+    init {
+        lifecycle.doOnDestroy {
+            game2048?.onDisposed()
+            componentScope.cancel()
+        }
+    }
+
+    private fun game2048(): Game2048ViewModel =
+        game2048 ?: Game2048ViewModel(componentScope, services).also { game2048 = it }
+
+    @Composable
+    override fun Content() {
+        ArcadeBackground {
+            when (screen) {
+                ArcadeScreen.Home -> ArcadeHomeScreen(
+                    onPlay2048 = { screen = ArcadeScreen.Game2048 },
+                )
+                ArcadeScreen.Game2048 -> Game2048Screen(
+                    viewModel = game2048(),
+                    leaderboard = services.leaderboard,
+                    onBack = { screen = ArcadeScreen.Home },
+                )
+            }
+        }
+    }
+}
+
+enum class ArcadeScreen { Home, Game2048 }
