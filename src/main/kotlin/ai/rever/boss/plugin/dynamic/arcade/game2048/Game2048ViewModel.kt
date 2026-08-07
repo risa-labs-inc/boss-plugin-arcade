@@ -60,6 +60,7 @@ class Game2048ViewModel(
     private var submittedScore = 0
     private var settleJob: Job? = null
     private var pendingBestSubmit: Job? = null
+    private var bestToSubmit = 0
 
     init {
         newGame()
@@ -165,11 +166,14 @@ class Game2048ViewModel(
     }
 
     fun newGame() {
+        // A run abandoned via "New game" still counts — record it before wiping.
+        submitRun()
         settleJob?.cancel()
         busy = false
         keepPlaying = false
         undoSnapshot = null
         submittedScore = 0
+        bestToSubmit = 0
         var tiles = emptyList<TileData>()
         repeat(2) { Game2048Logic.spawn(tiles, nextId++)?.let { tiles = tiles + it } }
         val cur = _state.value
@@ -216,15 +220,21 @@ class Game2048ViewModel(
     /**
      * Sync a new personal best while the run is still going, so the leaderboard
      * never depends on reaching game over (or on the app shutting down cleanly).
-     * Debounced: a climbing score keeps pushing the submit out until it plateaus.
+     *
+     * Throttled, NOT debounced: the first new best arms a submit 2s out, and
+     * further improvements inside the window just raise the value it will send.
+     * (A debounce that resets per improvement never fires for an active player
+     * who moves every second — the original "leaderboard never updates" bug.)
      */
     private fun scheduleBestSubmit(score: Int) {
-        pendingBestSubmit?.cancel()
+        bestToSubmit = maxOf(bestToSubmit, score)
+        if (pendingBestSubmit?.isActive == true) return
         pendingBestSubmit = services.pluginScope.launch {
             delay(2000)
-            if (score > submittedScore) {
-                submittedScore = score
-                services.leaderboard.submitAsync(services.pluginScope, GAME, score)
+            val value = bestToSubmit
+            if (value > submittedScore) {
+                submittedScore = value
+                services.leaderboard.submitAsync(services.pluginScope, GAME, value)
             }
         }
     }
