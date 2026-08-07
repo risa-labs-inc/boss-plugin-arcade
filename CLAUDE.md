@@ -59,6 +59,30 @@ Key patterns:
 - Backend: `supabase/arcade_schema.sql` (RLS insert-own/read-authenticated,
   `arcade_submit_score` / `arcade_personal_best` / `arcade_leaderboard` RPCs).
 
+## Adding a new game (checklist)
+
+1. **New package** `arcade/<game>/` — follow `game2048/` for turn-based games
+   (pure logic object + ViewModel + Screen) or `mirrordash/` for real-time ones
+   (engine + withFrameNanos loop + renderer). Keep the original game's feel:
+   port timings/values 1:1.
+2. **Leaderboard** — pick a game key (kebab-case, e.g. `"snake"`). No SQL
+   changes: `arcade_scores` is game-keyed. Use
+   `services.leaderboard.submitAsync(services.pluginScope, GAME, score)` for
+   submits and `LeaderboardOverlay(leaderboard, GAME, onClose)` for display.
+   Local best storage key convention: `"best.<game>.<userId|local>"`.
+3. **Wire the tab** — add to `ArcadeScreen` enum; in `ArcadeTabComponent` add a
+   lazily-created VM field (+ `onDisposed()` in `doOnDestroy`) and a nav case.
+4. **Home screen** — add a `GameCard` in `ArcadeHomeScreen` and the game key to
+   the list in `ArcadeHomeInsights`.
+5. **MCP play tools** (turn-based games only) — extend `ArcadeMcpTools` +
+   `ArcadeGameHost` so agent moves are visible on screen (see the 2048 tools).
+   Real-time games get leaderboard-only.
+6. **Docs** — README games list + this file's layout tree.
+7. **Ship** — `./gradlew buildPluginJar` → copy JAR to `~/.boss/plugins/` (and
+   `~/.boss_debug/plugins/`) for local test → push to `main` (auto bump,
+   release, store publish). Pull after the bot's bump commit. If a push doesn't
+   trigger the workflow, `gh workflow run build.yml` dispatches it manually.
+
 ## Version Management
 
 `build.gradle.kts` is the single source of truth; `processResources` syncs it
