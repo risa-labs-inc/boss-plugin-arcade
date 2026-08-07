@@ -66,11 +66,11 @@ class Game2048ViewModel(
         loadBest()
     }
 
-    fun move(dr: Int, dc: Int) {
+    fun move(dr: Int, dc: Int): Boolean {
         val s = _state.value
-        if (busy || s.over || s.veil != null) return
+        if (busy || s.over || s.veil != null) return false
         val outcome = Game2048Logic.computeMove(s.tiles, dr, dc)
-        if (!outcome.moved) return
+        if (!outcome.moved) return false
 
         busy = true
         undoSnapshot = snapshotOf(s)
@@ -121,6 +121,24 @@ class Game2048ViewModel(
                 showVeil(Veil.WIN)
             }
         }
+        return true
+    }
+
+    /** Compact JSON snapshot for the MCP tools (0 = empty cell). */
+    fun snapshotJson(): String {
+        val s = _state.value
+        val grid = List(Game2048Logic.SIZE) { r ->
+            List(Game2048Logic.SIZE) { c ->
+                s.tiles.firstOrNull { it.row == r && it.col == c }?.value ?: 0
+            }
+        }
+        val veil = when (s.veil) {
+            Veil.WIN -> "\"win\""
+            Veil.OVER -> "\"over\""
+            null -> "null"
+        }
+        return "{\"board\":$grid,\"score\":${s.score},\"best\":${s.best}," +
+            "\"over\":${s.over},\"won\":${s.won},\"veil\":$veil}"
     }
 
     fun undo() {
@@ -192,9 +210,7 @@ class Game2048ViewModel(
         if (score <= submittedScore) return
         submittedScore = score
         // Submit on the plugin scope: it survives the tab being closed.
-        services.pluginScope.launch {
-            services.leaderboard.submitScore(GAME, score)
-        }
+        services.leaderboard.submitAsync(services.pluginScope, GAME, score)
     }
 
     /**
@@ -208,7 +224,7 @@ class Game2048ViewModel(
             delay(2000)
             if (score > submittedScore) {
                 submittedScore = score
-                services.leaderboard.submitScore(GAME, score)
+                services.leaderboard.submitAsync(services.pluginScope, GAME, score)
             }
         }
     }

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ArcadeHomeScreen(
+    leaderboard: LeaderboardService,
     onPlay2048: () -> Unit,
     onPlayMirrorDash: () -> Unit,
 ) {
@@ -61,6 +62,7 @@ fun ArcadeHomeScreen(
             )
             ComingSoonCard()
         }
+        ArcadeHomeInsights(leaderboard)
     }
 }
 

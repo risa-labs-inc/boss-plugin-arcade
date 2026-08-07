@@ -4,6 +4,7 @@ import ai.rever.boss.plugin.api.AuthDataProvider
 import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
+import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import kotlinx.coroutines.CoroutineScope
 
 const val ARCADE_PLUGIN_ID = "ai.rever.boss.plugin.dynamic.arcade"
@@ -17,7 +18,15 @@ class ArcadeServices(
     val auth: AuthDataProvider?,
     val storage: PluginStorageProvider?,
     val leaderboard: LeaderboardService,
-)
+) {
+    /**
+     * The 2048 game in the most recently opened Arcade tab, exposed so the MCP
+     * tools can let an agent play it live on the user's screen. Null when no
+     * Arcade tab has a 2048 game.
+     */
+    @Volatile
+    var activeGame2048: Game2048ViewModel? = null
+}
 
 object ArcadeDynamicPlugin : DynamicPlugin {
     override val pluginId = ARCADE_PLUGIN_ID
@@ -42,7 +51,7 @@ object ArcadeDynamicPlugin : DynamicPlugin {
             ArcadeTabComponent(tabInfo, ctx, services)
         }
 
-        context.registerMcpToolProvider(ArcadeMcpTools(pluginId, services.leaderboard))
+        context.registerMcpToolProvider(ArcadeMcpTools(pluginId, services))
     }
 
     override fun dispose() {

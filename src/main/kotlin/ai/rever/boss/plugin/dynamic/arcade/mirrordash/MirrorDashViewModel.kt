@@ -89,9 +89,7 @@ class MirrorDashViewModel(
     private fun submitScore(score: Int) {
         if (score <= submittedScore) return
         submittedScore = score
-        services.pluginScope.launch {
-            services.leaderboard.submitScore(GAME, score)
-        }
+        services.leaderboard.submitAsync(services.pluginScope, GAME, score)
     }
 
     private fun bestKey(): String = "best.$GAME." + (services.leaderboard.currentUserId ?: "local")

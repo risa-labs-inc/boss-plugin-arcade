@@ -70,12 +70,16 @@ class ArcadeTabComponent(
         lifecycle.doOnDestroy {
             game2048?.onDisposed()
             mirrorDash?.onDisposed()
+            if (services.activeGame2048 === game2048) services.activeGame2048 = null
             componentScope.cancel()
         }
     }
 
     private fun game2048(): Game2048ViewModel =
-        game2048 ?: Game2048ViewModel(componentScope, services).also { game2048 = it }
+        game2048 ?: Game2048ViewModel(componentScope, services).also {
+            game2048 = it
+            services.activeGame2048 = it
+        }
 
     private fun mirrorDash(): MirrorDashViewModel =
         mirrorDash ?: MirrorDashViewModel(componentScope, services).also { mirrorDash = it }
@@ -85,6 +89,7 @@ class ArcadeTabComponent(
         ArcadeBackground {
             when (screen) {
                 ArcadeScreen.Home -> ArcadeHomeScreen(
+                    leaderboard = services.leaderboard,
                     onPlay2048 = { screen = ArcadeScreen.Game2048 },
                     onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
                 )

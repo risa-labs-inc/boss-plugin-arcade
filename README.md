@@ -38,10 +38,19 @@ and three RPCs: `arcade_submit_score`, `arcade_personal_best`,
 `auth.users` (security definer); switch the join to your profiles table if
 preferred.
 
-## MCP tool
+## MCP tools
 
-`arcade_leaderboard` — read-only; lets in-terminal agents post standings
-(surfaced as `mcp__boss__arcade_leaderboard`).
+Surfaced to in-terminal agents as `mcp__boss__arcade_*`:
+
+- `arcade_leaderboard` — top scores per player for a game (2048 or mirror-dash).
+- `arcade_2048_state` / `arcade_2048_move` / `arcade_2048_new_game` /
+  `arcade_2048_keep_going` — read and play the live 2048 board in the open
+  Arcade tab; the agent's moves animate on the user's screen. Requires an
+  Arcade tab with 2048 open. Mirror Dash is reflex/real-time, so it exposes no
+  play tools.
+
+The home screen also shows an "On the board" strip (top-3 podium, player count,
+latest score per game) so the picker itself advertises the competition.
 
 ## Build & local test
 

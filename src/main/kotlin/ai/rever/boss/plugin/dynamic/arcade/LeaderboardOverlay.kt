@@ -52,6 +52,9 @@ fun LeaderboardOverlay(
     LaunchedEffect(refreshKey) {
         loading = true
         error = null
+        // Order after any in-flight score submit, so a run that just ended is
+        // already in the list the player sees.
+        leaderboard.awaitPendingSubmits()
         if (!leaderboard.isAvailable) {
             error = "Leaderboard isn't available on this host."
             loading = false

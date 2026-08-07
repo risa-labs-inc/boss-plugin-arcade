@@ -2,6 +2,11 @@ package ai.rever.boss.plugin.dynamic.arcade
 
 import ai.rever.boss.plugin.api.AuthDataProvider
 import ai.rever.boss.plugin.api.SupabaseDataProvider
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -24,6 +29,7 @@ class LeaderboardService(
     private val auth: AuthDataProvider?,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+    private val pendingSubmits = CopyOnWriteArrayList<Job>()
 
     val isAvailable: Boolean
         get() = supabase != null
@@ -33,6 +39,22 @@ class LeaderboardService(
 
     val currentUserId: String?
         get() = auth?.currentUser?.value?.id
+
+    /**
+     * Fire-and-forget submit, tracked so readers can order themselves after it:
+     * the leaderboard UI calls [awaitPendingSubmits] before fetching, otherwise
+     * a fetch triggered right at game over can race the insert and miss the run.
+     */
+    fun submitAsync(scope: CoroutineScope, game: String, score: Int): Job {
+        val job = scope.launch { submitScore(game, score) }
+        pendingSubmits.add(job)
+        job.invokeOnCompletion { pendingSubmits.remove(job) }
+        return job
+    }
+
+    suspend fun awaitPendingSubmits() {
+        pendingSubmits.toList().joinAll()
+    }
 
     /** Record a finished run. Returns false when unavailable or rejected. */
     suspend fun submitScore(game: String, score: Int): Boolean {
