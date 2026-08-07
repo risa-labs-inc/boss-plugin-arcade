@@ -4,10 +4,19 @@ import ai.rever.boss.plugin.api.AuthDataProvider
 import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
+import ai.rever.boss.plugin.api.SplitViewOperations
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import kotlinx.coroutines.CoroutineScope
 
 const val ARCADE_PLUGIN_ID = "ai.rever.boss.plugin.dynamic.arcade"
+
+/**
+ * Implemented by the Arcade tab component so the MCP tools can bring the game
+ * they're driving onto the user's screen (navigate the tab to the 2048 board).
+ */
+interface ArcadeGameHost {
+    fun showGame2048(): Game2048ViewModel
+}
 
 /**
  * Everything the game screens need from the host, null-safe. The plugin works
@@ -18,6 +27,7 @@ class ArcadeServices(
     val auth: AuthDataProvider?,
     val storage: PluginStorageProvider?,
     val leaderboard: LeaderboardService,
+    val splitView: SplitViewOperations?,
 ) {
     /**
      * The 2048 game in the most recently opened Arcade tab, exposed so the MCP
@@ -26,6 +36,10 @@ class ArcadeServices(
      */
     @Volatile
     var activeGame2048: Game2048ViewModel? = null
+
+    /** The most recently opened Arcade tab; lets MCP tools surface the board. */
+    @Volatile
+    var activeArcadeTab: ArcadeGameHost? = null
 }
 
 object ArcadeDynamicPlugin : DynamicPlugin {
@@ -44,6 +58,7 @@ object ArcadeDynamicPlugin : DynamicPlugin {
             auth = context.authDataProvider,
             storage = context.pluginStorageFactory?.createStorage(pluginId),
             leaderboard = LeaderboardService(context.supabaseDataProvider, context.authDataProvider),
+            splitView = context.splitViewOperations,
         )
         this.services = services
 

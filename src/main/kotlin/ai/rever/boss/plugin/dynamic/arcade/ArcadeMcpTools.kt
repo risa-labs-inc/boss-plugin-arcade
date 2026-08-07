@@ -6,6 +6,7 @@ import ai.rever.boss.plugin.api.McpToolProvider
 import ai.rever.boss.plugin.api.McpToolResult
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * MCP tools for in-terminal agents (surfaced as mcp__boss__arcade_*):
@@ -53,7 +54,7 @@ class ArcadeMcpTools(
         ),
         McpToolDefinition(
             name = "arcade_2048_move",
-            description = "Slide the live 2048 board up, down, left, or right. The move animates on the user's screen. Returns the settled board JSON; a move that changes nothing reports so.",
+            description = "Slide the live 2048 board up, down, left, or right. The Arcade tab switches to the board so the user watches the move animate. Returns the settled board JSON; a move that changes nothing reports so.",
             inputSchema = """{"type":"object","properties":{"direction":{"type":"string","description":"up | down | left | right"}},"required":["direction"]}""",
             readOnly = false,
             handler = McpToolHandler { args ->
@@ -105,14 +106,27 @@ class ArcadeMcpTools(
         ),
     )
 
+    /**
+     * Resolve the game to drive, making it visible: navigate the open Arcade
+     * tab to the 2048 board, opening a fresh Arcade tab first when none exists.
+     */
     private suspend inline fun withGame(
         crossinline block: suspend (Game2048ViewModel) -> McpToolResult,
     ): McpToolResult {
-        val game = services.activeGame2048 ?: return McpToolResult(
-            "No live 2048 game. Ask the user to open an Arcade tab and select 2048 — " +
-                "your moves will play out on their screen.",
-            isError = true,
-        )
+        if (services.activeArcadeTab == null) {
+            runCatching { services.splitView?.openTab(ArcadeTabInfo()) }
+            withTimeoutOrNull(2500) {
+                while (services.activeArcadeTab == null) delay(100)
+            }
+        }
+        val game = services.activeArcadeTab?.let { runCatching { it.showGame2048() }.getOrNull() }
+            ?: services.activeGame2048
+            ?: return McpToolResult(
+                "No Arcade tab is available and one could not be opened. Ask the user " +
+                    "to open an Arcade tab (new tab → Arcade) — your moves will play " +
+                    "out on their screen.",
+                isError = true,
+            )
         return block(game)
     }
 }

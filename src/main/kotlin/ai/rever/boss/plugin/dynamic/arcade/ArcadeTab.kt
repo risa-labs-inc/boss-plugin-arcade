@@ -53,7 +53,7 @@ class ArcadeTabComponent(
     override val config: TabInfo,
     ctx: ComponentContext,
     private val services: ArcadeServices,
-) : TabComponentWithUI, ComponentContext by ctx {
+) : TabComponentWithUI, ArcadeGameHost, ComponentContext by ctx {
 
     override val tabTypeInfo: TabTypeInfo = ArcadeTabType
 
@@ -67,12 +67,21 @@ class ArcadeTabComponent(
     private var mirrorDash: MirrorDashViewModel? = null
 
     init {
+        services.activeArcadeTab = this
         lifecycle.doOnDestroy {
             game2048?.onDisposed()
             mirrorDash?.onDisposed()
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
+            if (services.activeArcadeTab === this) services.activeArcadeTab = null
             componentScope.cancel()
         }
+    }
+
+    /** MCP entry point: make the 2048 board the visible screen and return its game. */
+    override fun showGame2048(): Game2048ViewModel {
+        val vm = game2048()
+        screen = ArcadeScreen.Game2048
+        return vm
     }
 
     private fun game2048(): Game2048ViewModel =
