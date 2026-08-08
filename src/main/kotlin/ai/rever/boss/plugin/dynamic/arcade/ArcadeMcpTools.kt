@@ -22,8 +22,8 @@ class ArcadeMcpTools(
     override fun tools(): List<McpToolDefinition> = listOf(
         McpToolDefinition(
             name = "arcade_leaderboard",
-            description = "Arcade leaderboard: top scores per player. Games: 2048, mirror-dash.",
-            inputSchema = """{"type":"object","properties":{"game":{"type":"string","description":"Game key: 2048 (default) or mirror-dash"},"limit":{"type":"integer","description":"Max entries (default 10)"}},"required":[]}""",
+            description = "Arcade leaderboard: top scores per player. Games: 2048, mirror-dash, sky-stack.",
+            inputSchema = """{"type":"object","properties":{"game":{"type":"string","description":"Game key: 2048 (default), mirror-dash, or sky-stack"},"limit":{"type":"integer","description":"Max entries (default 10)"}},"required":[]}""",
             handler = McpToolHandler { args ->
                 val game = args.string("game") ?: "2048"
                 val limit = (args.int("limit") ?: 10).coerceIn(1, 50)

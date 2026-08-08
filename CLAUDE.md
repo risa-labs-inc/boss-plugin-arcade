@@ -4,7 +4,7 @@
 
 **BOSS Arcade** (`ai.rever.boss.plugin.dynamic.arcade`) is a dynamic tab plugin
 for the BOSS desktop application: quick competitive games with team
-leaderboards. First game: 2048 (a native Compose port of an HTML original).
+leaderboards, implemented as native Compose ports of HTML originals.
 
 - **Plugin ID**: `ai.rever.boss.plugin.dynamic.arcade`
 - **Main Class**: `ai.rever.boss.plugin.dynamic.arcade.ArcadeDynamicPlugin`
@@ -41,12 +41,18 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── Game2048Board.kt      # board + animated tiles
 │   ├── Game2048Chrome.kt     # header, score chips, veil
 │   └── Game2048Screen.kt     # assembly + keyboard input
-└── mirrordash/
-    ├── MirrorDashEngine.kt    # real-time simulation (port of the HTML update loop)
-    ├── MirrorDashViewModel.kt # phase machine + best/leaderboard bookkeeping
-    ├── MirrorDashRenderer.kt  # Compose Canvas frame rendering
-    ├── MirrorDashScreen.kt    # withFrameNanos loop + input
-    └── MirrorDashOverlays.kt  # HUD, start/pause/over cards
+├── mirrordash/
+│   ├── MirrorDashEngine.kt    # real-time simulation (port of the HTML update loop)
+│   ├── MirrorDashViewModel.kt # phase machine + best/leaderboard bookkeeping
+│   ├── MirrorDashRenderer.kt  # Compose Canvas frame rendering
+│   ├── MirrorDashScreen.kt    # withFrameNanos loop + input
+│   └── MirrorDashOverlays.kt  # HUD, start/pause/over cards
+└── skystack/
+    ├── SkyStackEngine.kt      # alternating-axis block simulation
+    ├── SkyStackViewModel.kt   # phase machine + best/leaderboard bookkeeping
+    ├── SkyStackRenderer.kt    # isometric blocks, sky, stars, offcuts, rings
+    ├── SkyStackScreen.kt      # frame loop + focus-safe keyboard/pointer input
+    └── SkyStackOverlays.kt    # HUD, start/pause/over cards
 ```
 
 Key patterns:

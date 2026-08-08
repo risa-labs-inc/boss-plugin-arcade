@@ -29,6 +29,7 @@ fun ArcadeHomeScreen(
     leaderboard: LeaderboardService,
     onPlay2048: () -> Unit,
     onPlayMirrorDash: () -> Unit,
+    onPlaySkyStack: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -60,7 +61,12 @@ fun ArcadeHomeScreen(
                 badge = { TileBadge("⟷", Color(0xFF7547EF)) },
                 onClick = onPlayMirrorDash,
             )
-            ComingSoonCard()
+            GameCard(
+                title = "Sky Stack",
+                subtitle = "Stack from dusk to the stars",
+                badge = { TileBadge("▲", Color(0xFFFF9E7A)) },
+                onClick = onPlaySkyStack,
+            )
         }
         ArcadeHomeInsights(leaderboard)
     }
@@ -108,38 +114,5 @@ private fun GameCard(
         )
         Spacer(Modifier.height(14.dp))
         ArcadePrimaryButton(text = "Play", onClick = onClick)
-    }
-}
-
-@Composable
-private fun ComingSoonCard() {
-    Column(
-        modifier = Modifier
-            .width(180.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(ArcadeColors.Cell.copy(alpha = 0.6f))
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(ArcadeColors.Frame),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("?", color = ArcadeColors.Muted, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
-        }
-        Spacer(Modifier.height(12.dp))
-        Text("More soon", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ArcadeColors.InkSoft)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Got a game idea? Ping the team.",
-            fontSize = 12.sp,
-            color = ArcadeColors.Muted,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(14.dp))
-        ArcadeGhostButton(text = "Soon", onClick = {}, enabled = false)
     }
 }

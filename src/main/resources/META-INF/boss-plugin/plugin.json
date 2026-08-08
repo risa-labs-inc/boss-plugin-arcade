@@ -7,7 +7,7 @@
   "minApiVersion": "1.0.64",
   "mainClass": "ai.rever.boss.plugin.dynamic.arcade.ArcadeDynamicPlugin",
   "type": "tab",
-  "description": "Quick competitive games with team leaderboards. First up: 2048.",
+  "description": "Quick competitive games with team leaderboards.",
   "author": "Risa Labs",
   "url": "https://github.com/risa-labs-inc/boss-plugin-arcade"
 }

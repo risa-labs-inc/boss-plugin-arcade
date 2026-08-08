@@ -10,6 +10,8 @@ import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048Screen
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashScreen
 import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashViewModel
+import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackScreen
+import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.runtime.Composable
@@ -65,12 +67,14 @@ class ArcadeTabComponent(
     // Home <-> game never resets a run in progress.
     private var game2048: Game2048ViewModel? = null
     private var mirrorDash: MirrorDashViewModel? = null
+    private var skyStack: SkyStackViewModel? = null
 
     init {
         services.activeArcadeTab = this
         lifecycle.doOnDestroy {
             game2048?.onDisposed()
             mirrorDash?.onDisposed()
+            skyStack?.onDisposed()
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
             if (services.activeArcadeTab === this) services.activeArcadeTab = null
             componentScope.cancel()
@@ -93,6 +97,9 @@ class ArcadeTabComponent(
     private fun mirrorDash(): MirrorDashViewModel =
         mirrorDash ?: MirrorDashViewModel(componentScope, services).also { mirrorDash = it }
 
+    private fun skyStack(): SkyStackViewModel =
+        skyStack ?: SkyStackViewModel(componentScope, services).also { skyStack = it }
+
     @Composable
     override fun Content() {
         ArcadeBackground {
@@ -101,6 +108,7 @@ class ArcadeTabComponent(
                     leaderboard = services.leaderboard,
                     onPlay2048 = { screen = ArcadeScreen.Game2048 },
                     onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
+                    onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
                 )
                 ArcadeScreen.Game2048 -> Game2048Screen(
                     viewModel = game2048(),
@@ -115,9 +123,17 @@ class ArcadeTabComponent(
                         screen = ArcadeScreen.Home
                     },
                 )
+                ArcadeScreen.SkyStack -> SkyStackScreen(
+                    viewModel = skyStack(),
+                    leaderboard = services.leaderboard,
+                    onBack = {
+                        skyStack?.pauseIfPlaying()
+                        screen = ArcadeScreen.Home
+                    },
+                )
             }
         }
     }
 }
 
-enum class ArcadeScreen { Home, Game2048, MirrorDash }
+enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack }

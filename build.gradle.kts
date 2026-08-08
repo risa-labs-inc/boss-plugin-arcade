@@ -53,6 +53,8 @@ dependencies {
     // JSON parsing for leaderboard RPC responses. Not bundled — the host provides
     // kotlinx-serialization on the plugin classpath (shared parent-first package).
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
+    testImplementation(kotlin("test"))
 }
 
 // Keep the default :jar (runs under `build`) from colliding with buildPluginJar's

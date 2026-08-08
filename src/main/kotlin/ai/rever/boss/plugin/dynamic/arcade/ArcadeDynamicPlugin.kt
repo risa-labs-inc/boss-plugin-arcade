@@ -46,7 +46,7 @@ object ArcadeDynamicPlugin : DynamicPlugin {
     override val pluginId = ARCADE_PLUGIN_ID
     override val displayName = "Arcade"
     override val version = "0.1.0"
-    override val description = "Quick competitive games with team leaderboards. First up: 2048."
+    override val description = "Quick competitive games with team leaderboards."
     override val author = "Risa Labs"
     override val url = "https://github.com/risa-labs-inc/boss-plugin-arcade"
 

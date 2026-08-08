@@ -41,7 +41,11 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
     LaunchedEffect(Unit) {
         if (!leaderboard.isAvailable) return@LaunchedEffect
         leaderboard.awaitPendingSubmits()
-        boards = listOf("2048" to "2048", "mirror-dash" to "Mirror Dash").map { (key, title) ->
+        boards = listOf(
+            "2048" to "2048",
+            "mirror-dash" to "Mirror Dash",
+            "sky-stack" to "Sky Stack",
+        ).map { (key, title) ->
             GameBoard(title, leaderboard.topScores(key, 10).getOrNull().orEmpty())
         }
     }
