@@ -59,5 +59,10 @@ class SkyStackEngineTest {
         assertTrue(svg.startsWith("<?xml"))
         assertTrue(svg.contains("ALTITUDE 1"))
         assertEquals(engine.blocks.size * 3, Regex("<polygon ").findAll(svg).count())
+
+        val png = SkyStackTowerExport.renderPng(engine.blocks, engine.score)
+        assertEquals(1200, png.width)
+        assertEquals(1600, png.height)
+        assertTrue(png.getRGB(600, 800) != png.getRGB(0, 0))
     }
 }

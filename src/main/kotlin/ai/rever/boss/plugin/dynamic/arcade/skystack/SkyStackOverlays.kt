@@ -188,7 +188,8 @@ internal fun BoxScope.SkyStackTowerOverviewControls(
     score: Int,
     exportMessage: String?,
     onBack: () -> Unit,
-    onExport: () -> Unit,
+    onExportSvg: () -> Unit,
+    onExportPng: () -> Unit,
 ) {
     Column(
         modifier = Modifier.align(Alignment.TopCenter).padding(top = 24.dp),
@@ -224,9 +225,11 @@ internal fun BoxScope.SkyStackTowerOverviewControls(
             Spacer(Modifier.height(8.dp))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SkyStackOutlineButton("BACK TO SCORE", onBack)
+            SkyStackOutlineButton("BACK", onBack)
             Spacer(Modifier.width(10.dp))
-            SkyStackPrimaryButton("SAVE SHAREABLE SVG", onExport)
+            SkyStackOutlineButton("SAVE SVG", onExportSvg)
+            Spacer(Modifier.width(10.dp))
+            SkyStackPrimaryButton("SAVE PNG", onExportPng)
         }
     }
 }

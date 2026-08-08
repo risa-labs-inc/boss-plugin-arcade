@@ -94,6 +94,17 @@ fun SkyStackScreen(
         }
     }
 
+    fun exportTower(format: String, save: () -> java.nio.file.Path) {
+        exportMessage = "Saving $format…"
+        screenScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching(save) }
+            exportMessage = result.fold(
+                onSuccess = { "Saved $format to ${it.toAbsolutePath()}" },
+                onFailure = { "Could not save $format: ${it.message ?: "unknown error"}" },
+            )
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -153,17 +164,11 @@ fun SkyStackScreen(
                 score = viewModel.score,
                 exportMessage = exportMessage,
                 onBack = { showTowerOverview = false },
-                onExport = {
-                    exportMessage = "Saving tower…"
-                    screenScope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            runCatching { SkyStackTowerExport.save(viewModel.engine) }
-                        }
-                        exportMessage = result.fold(
-                            onSuccess = { "Saved to ${it.toAbsolutePath()}" },
-                            onFailure = { "Could not save tower: ${it.message ?: "unknown error"}" },
-                        )
-                    }
+                onExportSvg = {
+                    exportTower("SVG") { SkyStackTowerExport.saveSvg(viewModel.engine) }
+                },
+                onExportPng = {
+                    exportTower("PNG") { SkyStackTowerExport.savePng(viewModel.engine) }
                 },
             )
 

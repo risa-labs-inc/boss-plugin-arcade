@@ -16,7 +16,7 @@ original single-file HTML versions.
     The game screen captures keyboard focus on entry, so Space works before the
     first mouse click. Native synthesized tones preserve the original landing,
     perfect-combo, and game-over sounds. After a run, **View Full Tower** zooms
-    the entire final stack into view and can save it as a shareable SVG.
+    the entire final stack into view and can save it as a shareable SVG or PNG.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in
