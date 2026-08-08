@@ -14,7 +14,9 @@ original single-file HTML versions.
   - **Sky Stack** — tap/Space to drop alternating isometric blocks, trim misses,
     and chain perfect landings while the backdrop climbs from dusk to space.
     The game screen captures keyboard focus on entry, so Space works before the
-    first mouse click. The original WebAudio beeps did not carry over.
+    first mouse click. Native synthesized tones preserve the original landing,
+    perfect-combo, and game-over sounds. After a run, **View Full Tower** zooms
+    the entire final stack into view and can save it as a shareable SVG.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in

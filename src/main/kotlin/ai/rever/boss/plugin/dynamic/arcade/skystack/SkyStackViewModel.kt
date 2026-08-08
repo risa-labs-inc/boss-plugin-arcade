@@ -22,6 +22,7 @@ class SkyStackViewModel(
     enum class Phase { MENU, PLAYING, PAUSED, REVEALING, OVER }
 
     val engine = SkyStackEngine()
+    private val sounds = SkyStackSoundPlayer(scope)
 
     var phase by mutableStateOf(Phase.MENU)
         private set
@@ -58,9 +59,17 @@ class SkyStackViewModel(
             SkyStackEngine.DropResult.PLACED -> {
                 score = engine.score
                 combo = engine.combo
+                if (engine.lastDropWasPerfect) {
+                    sounds.perfect(engine.combo)
+                } else {
+                    sounds.trim(engine.level - 1)
+                }
             }
 
-            SkyStackEngine.DropResult.MISSED -> onGameOver()
+            SkyStackEngine.DropResult.MISSED -> {
+                sounds.gameOver()
+                onGameOver()
+            }
         }
     }
 

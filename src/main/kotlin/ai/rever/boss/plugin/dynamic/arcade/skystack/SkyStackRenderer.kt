@@ -33,6 +33,7 @@ fun DrawScope.drawSkyStack(
     width: Float,
     height: Float,
     showMovingBlock: Boolean,
+    showFullTower: Boolean = false,
 ) {
     if (width <= 0f || height <= 0f) return
     val altitude = min(1f, engine.score / 42f)
@@ -47,9 +48,30 @@ fun DrawScope.drawSkyStack(
 
     scale(density, density, pivot = Offset.Zero) {
         drawStars(engine, width, height, altitude)
+    }
 
-        var centerX = width / 2f
-        var centerY = height * 0.74f + engine.cameraY
+    val towerHeight = engine.level * SkyStackEngine.BLOCK_HEIGHT + SkyStackEngine.SIZE
+    val overviewScale = if (showFullTower) {
+        min(
+            1f,
+            min(
+                (height - 150f).coerceAtLeast(120f) / towerHeight,
+                (width - 80f).coerceAtLeast(120f) / (SkyStackEngine.SIZE * 1.8f),
+            ),
+        ).coerceAtLeast(0.12f)
+    } else {
+        1f
+    }
+    val logicalWidth = width / overviewScale
+    val logicalHeight = height / overviewScale
+
+    scale(density * overviewScale, density * overviewScale, pivot = Offset.Zero) {
+        var centerX = logicalWidth / 2f
+        var centerY = if (showFullTower) {
+            logicalHeight / 2f + engine.level * SkyStackEngine.BLOCK_HEIGHT / 2f
+        } else {
+            logicalHeight * 0.74f + engine.cameraY
+        }
         if (engine.shakeTime > 0f) {
             centerX += (Random.nextFloat() - 0.5f) * 10f * engine.shakeTime
             centerY += (Random.nextFloat() - 0.5f) * 10f * engine.shakeTime
@@ -57,7 +79,11 @@ fun DrawScope.drawSkyStack(
 
         val firstVisible = max(
             0,
-            floor((engine.cameraY - height) / SkyStackEngine.BLOCK_HEIGHT).toInt(),
+            if (showFullTower) {
+                0
+            } else {
+                floor((engine.cameraY - logicalHeight) / SkyStackEngine.BLOCK_HEIGHT).toInt()
+            },
         )
         for (i in firstVisible until engine.blocks.size) {
             drawBlock(

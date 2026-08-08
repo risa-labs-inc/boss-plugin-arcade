@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -23,6 +24,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.min
 
 @Composable
@@ -32,7 +37,11 @@ fun SkyStackScreen(
     onBack: () -> Unit,
 ) {
     var showLeaderboard by remember { mutableStateOf(false) }
+    var showTowerOverview by remember { mutableStateOf(false) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
+    val startButtonFocusRequester = remember { FocusRequester() }
+    val screenScope = rememberCoroutineScope()
     var frameTick by remember { mutableStateOf(0L) }
     val density = LocalDensity.current.density
 
@@ -50,15 +59,29 @@ fun SkyStackScreen(
         }
     }
 
-    // Own keyboard focus as soon as the screen appears. Preview handling runs
-    // before child buttons, so Space works immediately rather than only after
-    // the first mouse click (the focus bug in the original HTML version).
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    LaunchedEffect(showLeaderboard) {
+    // BOSS can attach the plugin content a few frames after this composable is
+    // created. Retry focus after attachment, and focus the actual Start button
+    // while on the menu so Space activates it even before any pointer input.
+    LaunchedEffect(viewModel.phase, showLeaderboard, showTowerOverview) {
         if (showLeaderboard) {
             viewModel.pauseIfPlaying()
-        } else {
-            focusRequester.requestFocus()
+            return@LaunchedEffect
+        }
+        if (showTowerOverview) return@LaunchedEffect
+        repeat(20) {
+            delay(100)
+            if (viewModel.phase == SkyStackViewModel.Phase.MENU) {
+                startButtonFocusRequester.requestFocus()
+            } else {
+                focusRequester.requestFocus()
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel.phase) {
+        if (viewModel.phase != SkyStackViewModel.Phase.OVER) {
+            showTowerOverview = false
+            exportMessage = null
         }
     }
 
@@ -75,7 +98,7 @@ fun SkyStackScreen(
         modifier = Modifier
             .fillMaxSize()
             .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown || showLeaderboard) {
+                if (event.type != KeyEventType.KeyDown || showLeaderboard || showTowerOverview) {
                     return@onPreviewKeyEvent false
                 }
                 when (event.key) {
@@ -94,9 +117,11 @@ fun SkyStackScreen(
             }
             .focusRequester(focusRequester)
             .focusable()
-            .pointerInput(viewModel.phase) {
+            .pointerInput(viewModel.phase, showTowerOverview) {
                 detectTapGestures {
-                    if (viewModel.phase == SkyStackViewModel.Phase.PLAYING) viewModel.drop()
+                    if (!showTowerOverview && viewModel.phase == SkyStackViewModel.Phase.PLAYING) {
+                        viewModel.drop()
+                    }
                     focusRequester.requestFocus()
                 }
             },
@@ -111,28 +136,57 @@ fun SkyStackScreen(
                 height = size.height / density,
                 showMovingBlock = viewModel.phase == SkyStackViewModel.Phase.PLAYING ||
                     viewModel.phase == SkyStackViewModel.Phase.PAUSED,
+                showFullTower = showTowerOverview,
             )
         }
 
-        SkyStackHud(
-            viewModel = viewModel,
-            onBack = onBack,
-            onLeaderboard = { showLeaderboard = true },
-        )
+        if (!showTowerOverview) {
+            SkyStackHud(
+                viewModel = viewModel,
+                onBack = onBack,
+                onLeaderboard = { showLeaderboard = true },
+            )
+        }
 
-        when (viewModel.phase) {
-            SkyStackViewModel.Phase.MENU -> SkyStackStartCard(viewModel.best, viewModel::start)
-            SkyStackViewModel.Phase.PAUSED ->
+        when {
+            showTowerOverview -> SkyStackTowerOverviewControls(
+                score = viewModel.score,
+                exportMessage = exportMessage,
+                onBack = { showTowerOverview = false },
+                onExport = {
+                    exportMessage = "Saving tower…"
+                    screenScope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            runCatching { SkyStackTowerExport.save(viewModel.engine) }
+                        }
+                        exportMessage = result.fold(
+                            onSuccess = { "Saved to ${it.toAbsolutePath()}" },
+                            onFailure = { "Could not save tower: ${it.message ?: "unknown error"}" },
+                        )
+                    }
+                },
+            )
+
+            viewModel.phase == SkyStackViewModel.Phase.MENU -> SkyStackStartCard(
+                best = viewModel.best,
+                startButtonFocusRequester = startButtonFocusRequester,
+                onStart = viewModel::start,
+            )
+            viewModel.phase == SkyStackViewModel.Phase.PAUSED ->
                 if (!showLeaderboard) SkyStackPauseCard(viewModel::togglePause)
-            SkyStackViewModel.Phase.OVER -> SkyStackOverCard(
+            viewModel.phase == SkyStackViewModel.Phase.OVER -> SkyStackOverCard(
                 score = viewModel.score,
                 best = viewModel.best,
                 isNewBest = viewModel.isNewBest,
                 onRetry = viewModel::start,
+                onViewTower = {
+                    exportMessage = null
+                    showTowerOverview = true
+                },
                 onLeaderboard = { showLeaderboard = true },
             )
 
-            SkyStackViewModel.Phase.PLAYING, SkyStackViewModel.Phase.REVEALING -> Unit
+            else -> Unit
         }
 
         if (showLeaderboard) {

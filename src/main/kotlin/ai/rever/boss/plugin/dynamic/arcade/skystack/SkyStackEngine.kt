@@ -81,6 +81,8 @@ class SkyStackEngine(private val random: Random = Random.Default) {
         private set
     var elapsed = 0f
         private set
+    var lastDropWasPerfect = false
+        private set
 
     val score: Int
         get() = level - 1
@@ -105,6 +107,7 @@ class SkyStackEngine(private val random: Random = Random.Default) {
         cameraY = 0f
         cameraTarget = 0f
         shakeTime = 0f
+        lastDropWasPerfect = false
         spawn()
     }
 
@@ -171,6 +174,7 @@ class SkyStackEngine(private val random: Random = Random.Default) {
         val overlap = movingSize - abs(delta)
 
         if (overlap <= 0f) {
+            lastDropWasPerfect = false
             slices += Slice(
                 x = moving.x,
                 z = moving.z,
@@ -191,7 +195,8 @@ class SkyStackEngine(private val random: Random = Random.Default) {
         var placedW = moving.w
         var placedD = moving.d
 
-        if (abs(delta) <= PERFECT) {
+        lastDropWasPerfect = abs(delta) <= PERFECT
+        if (lastDropWasPerfect) {
             combo++
             when (moving.axis) {
                 Axis.X -> {
@@ -250,7 +255,7 @@ class SkyStackEngine(private val random: Random = Random.Default) {
 
         val placed = Block(placedX, placedZ, placedW, placedD, moving.hue)
         blocks += placed
-        if (abs(delta) <= PERFECT) {
+        if (lastDropWasPerfect) {
             rings += Ring(placed, (level + 1) * BLOCK_HEIGHT)
         }
         level++

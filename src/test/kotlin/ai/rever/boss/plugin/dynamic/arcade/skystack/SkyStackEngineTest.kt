@@ -40,7 +40,24 @@ class SkyStackEngineTest {
 
         assertEquals(SkyStackEngine.DropResult.PLACED, engine.drop())
         assertEquals(1, engine.combo)
+        assertTrue(engine.lastDropWasPerfect)
         assertEquals(1, engine.rings.size)
         assertEquals(SkyStackEngine.Axis.Z, engine.current?.axis)
+    }
+
+    @Test
+    fun towerExportContainsEveryFaceAndScore() {
+        val engine = SkyStackEngine()
+        val speed = engine.speedForLevel()
+        val targetX = -SkyStackEngine.SIZE / 2f
+        val distance = targetX - (-SkyStackEngine.RANGE - SkyStackEngine.SIZE)
+        engine.update(distance / speed, isPlaying = true)
+        engine.drop()
+
+        val svg = SkyStackTowerExport.svg(engine.blocks, engine.score)
+
+        assertTrue(svg.startsWith("<?xml"))
+        assertTrue(svg.contains("ALTITUDE 1"))
+        assertEquals(engine.blocks.size * 3, Regex("<polygon ").findAll(svg).count())
     }
 }

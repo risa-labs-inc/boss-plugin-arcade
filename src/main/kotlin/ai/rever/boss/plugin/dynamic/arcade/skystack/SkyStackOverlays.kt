@@ -20,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -91,7 +93,11 @@ internal fun BoxScope.SkyStackHud(
 }
 
 @Composable
-internal fun BoxScope.SkyStackStartCard(best: Int, onStart: () -> Unit) {
+internal fun BoxScope.SkyStackStartCard(
+    best: Int,
+    startButtonFocusRequester: FocusRequester,
+    onStart: () -> Unit,
+) {
     SkyStackCard {
         Text(
             "SKY STACK",
@@ -111,7 +117,11 @@ internal fun BoxScope.SkyStackStartCard(best: Int, onStart: () -> Unit) {
         Spacer(Modifier.height(22.dp))
         Text("Best altitude  $best", color = SkyStackColors.InkDim, fontSize = 14.sp)
         Spacer(Modifier.height(22.dp))
-        SkyStackPrimaryButton("START STACKING", onStart)
+        SkyStackPrimaryButton(
+            text = "START STACKING",
+            onClick = onStart,
+            modifier = Modifier.focusRequester(startButtonFocusRequester),
+        )
         Spacer(Modifier.height(14.dp))
         Text(
             "TAP OR PRESS  SPACE  TO DROP",
@@ -141,6 +151,7 @@ internal fun BoxScope.SkyStackOverCard(
     best: Int,
     isNewBest: Boolean,
     onRetry: () -> Unit,
+    onViewTower: () -> Unit,
     onLeaderboard: () -> Unit,
 ) {
     SkyStackCard {
@@ -158,6 +169,8 @@ internal fun BoxScope.SkyStackOverCard(
         Text("Best altitude  $best", color = SkyStackColors.InkDim, fontSize = 14.sp)
         Spacer(Modifier.height(20.dp))
         SkyStackPrimaryButton("STACK AGAIN", onRetry)
+        Spacer(Modifier.height(10.dp))
+        SkyStackOutlineButton("VIEW FULL TOWER", onViewTower)
         Spacer(Modifier.height(12.dp))
         Text(
             "Leaderboard",
@@ -167,6 +180,54 @@ internal fun BoxScope.SkyStackOverCard(
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).plainClickable(onLeaderboard).padding(6.dp),
         )
         Text("Press Space or Enter to replay", color = SkyStackColors.InkDim, fontSize = 10.sp)
+    }
+}
+
+@Composable
+internal fun BoxScope.SkyStackTowerOverviewControls(
+    score: Int,
+    exportMessage: String?,
+    onBack: () -> Unit,
+    onExport: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.align(Alignment.TopCenter).padding(top = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "YOUR FULL TOWER",
+            color = SkyStackColors.Ink,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 3.sp,
+        )
+        Text(
+            "ALTITUDE $score",
+            color = SkyStackColors.Glow,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+        )
+    }
+
+    Column(
+        modifier = Modifier.align(Alignment.BottomCenter).padding(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        exportMessage?.let {
+            Text(
+                it,
+                color = SkyStackColors.Ink.copy(alpha = 0.8f),
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SkyStackOutlineButton("BACK TO SCORE", onBack)
+            Spacer(Modifier.width(10.dp))
+            SkyStackPrimaryButton("SAVE SHAREABLE SVG", onExport)
+        }
     }
 }
 
@@ -188,9 +249,13 @@ private fun BoxScope.SkyStackCard(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SkyStackPrimaryButton(text: String, onClick: () -> Unit) {
+private fun SkyStackPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .height(50.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(ButtonBackground)
@@ -204,6 +269,28 @@ private fun SkyStackPrimaryButton(text: String, onClick: () -> Unit) {
             fontWeight = FontWeight.Black,
             fontSize = 13.sp,
             letterSpacing = 3.sp,
+        )
+    }
+}
+
+@Composable
+private fun SkyStackOutlineButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .height(50.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SkyStackColors.Card)
+            .border(1.dp, SkyStackColors.CardEdge, RoundedCornerShape(4.dp))
+            .plainClickable(onClick)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            color = SkyStackColors.Ink,
+            fontWeight = FontWeight.Black,
+            fontSize = 12.sp,
+            letterSpacing = 2.sp,
         )
     }
 }

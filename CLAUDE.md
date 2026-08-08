@@ -52,7 +52,9 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
     ├── SkyStackViewModel.kt   # phase machine + best/leaderboard bookkeeping
     ├── SkyStackRenderer.kt    # isometric blocks, sky, stars, offcuts, rings
     ├── SkyStackScreen.kt      # frame loop + focus-safe keyboard/pointer input
-    └── SkyStackOverlays.kt    # HUD, start/pause/over cards
+    ├── SkyStackOverlays.kt    # HUD, start/pause/over/whole-tower controls
+    ├── SkyStackSoundPlayer.kt # native synthesized HTML-equivalent tones
+    └── SkyStackTowerExport.kt # shareable full-tower SVG export
 ```
 
 Key patterns:
