@@ -46,7 +46,7 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
             "mirror-dash" to "Mirror Dash",
             "sky-stack" to "Sky Stack",
         ).map { (key, title) ->
-            GameBoard(title, leaderboard.topScores(key, 10).getOrNull().orEmpty())
+            GameBoard(title, leaderboard.topScores(key, 15).getOrNull().orEmpty())
         }
     }
 
@@ -73,11 +73,13 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
 
 @Composable
 private fun GameBoardCard(board: GameBoard, myUserId: String?) {
+    var expanded by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .width(224.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(ArcadeColors.Chip.copy(alpha = 0.75f))
+            .plainClickable { expanded = !expanded }
             .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -89,43 +91,67 @@ private fun GameBoardCard(board: GameBoard, myUserId: String?) {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                if (board.entries.size >= 10) "10+ players" else "${board.entries.size} player" +
+                if (board.entries.size >= 15) "15+ players" else "${board.entries.size} player" +
                     if (board.entries.size == 1) "" else "s",
                 fontSize = 10.sp,
                 color = ArcadeColors.Muted,
             )
         }
         Spacer(Modifier.height(8.dp))
-        val medals = listOf("🥇", "🥈", "🥉")
-        board.entries.take(3).forEachIndexed { i, entry ->
-            val isMe = entry.userId != null && entry.userId == myUserId
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 2.dp),
-            ) {
-                Text(medals[i], fontSize = 12.sp)
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    (entry.displayName ?: "Player") + if (isMe) " (you)" else "",
-                    fontSize = 12.sp,
-                    fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
-                    color = ArcadeColors.Ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    "%,d".format(entry.bestScore),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = ArcadeColors.Ink,
-                )
-            }
+        val visible = if (expanded) board.entries else board.entries.take(3)
+        visible.forEachIndexed { i, entry ->
+            BoardRow(
+                rank = i + 1,
+                entry = entry,
+                isMe = entry.userId != null && entry.userId == myUserId,
+            )
         }
         latestActivity(board.entries)?.let { note ->
             Spacer(Modifier.height(6.dp))
             Text(note, fontSize = 10.sp, color = ArcadeColors.Muted)
         }
+        if (board.entries.size > 3) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (expanded) "▴ Show less" else "▾ Top ${board.entries.size}",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = ArcadeColors.Pink,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BoardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
+    val medals = listOf("🥇", "🥈", "🥉")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 2.dp),
+    ) {
+        Text(
+            if (rank <= 3) medals[rank - 1] else "$rank.",
+            fontSize = if (rank <= 3) 12.sp else 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = ArcadeColors.Muted,
+            modifier = Modifier.width(22.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            (entry.displayName ?: "Player") + if (isMe) " (you)" else "",
+            fontSize = 12.sp,
+            fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
+            color = ArcadeColors.Ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            "%,d".format(entry.bestScore),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = ArcadeColors.Ink,
+        )
     }
 }
 
