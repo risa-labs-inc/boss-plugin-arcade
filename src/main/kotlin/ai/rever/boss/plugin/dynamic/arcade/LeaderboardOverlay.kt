@@ -48,8 +48,9 @@ fun LeaderboardOverlay(
     var error by remember { mutableStateOf<String?>(null) }
     var entries by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
     var refreshKey by remember { mutableStateOf(0) }
+    var weekly by remember { mutableStateOf(false) }
 
-    LaunchedEffect(refreshKey) {
+    LaunchedEffect(refreshKey, weekly) {
         loading = true
         error = null
         // Order after any in-flight score submit, so a run that just ended is
@@ -59,9 +60,16 @@ fun LeaderboardOverlay(
             error = "Leaderboard isn't available on this host."
             loading = false
         } else {
-            leaderboard.topScores(game).fold(
+            val since = if (weekly) LeaderboardService.weekStartIso() else null
+            leaderboard.topScores(game, sinceIso = since).fold(
                 onSuccess = { entries = it },
-                onFailure = { error = "Couldn't load the leaderboard. Try refresh." },
+                onFailure = {
+                    error = if (weekly) {
+                        "Weekly board isn't available yet — the backend needs the updated arcade_leaderboard function."
+                    } else {
+                        "Couldn't load the leaderboard. Try refresh."
+                    }
+                },
             )
             loading = false
         }
@@ -98,7 +106,12 @@ fun LeaderboardOverlay(
                     Icon(Icons.Outlined.Close, "Close", tint = ArcadeColors.InkSoft)
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PeriodTab("All-time", selected = !weekly) { weekly = false }
+                PeriodTab("This week", selected = weekly) { weekly = true }
+            }
+            Spacer(Modifier.height(10.dp))
 
             when {
                 loading -> Box(
@@ -120,7 +133,8 @@ fun LeaderboardOverlay(
                 )
 
                 entries.isEmpty() -> Text(
-                    "No scores yet — set the first one!",
+                    if (weekly) "No scores this week yet — the race is wide open!"
+                    else "No scores yet — set the first one!",
                     fontSize = 13.sp,
                     color = ArcadeColors.InkSoft,
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -146,6 +160,24 @@ fun LeaderboardOverlay(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PeriodTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (selected) ArcadeColors.Pink else ArcadeColors.Cell)
+            .plainClickable(onClick)
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+    ) {
+        Text(
+            label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) androidx.compose.ui.graphics.Color.White else ArcadeColors.InkSoft,
+        )
     }
 }
 

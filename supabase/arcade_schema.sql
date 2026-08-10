@@ -54,8 +54,16 @@ as $$
   where game = p_game and user_id = auth.uid();
 $$;
 
--- Top N: best score per user, with a human-readable name.
-create or replace function public.arcade_leaderboard(p_game text, p_limit integer default 10)
+-- Top N: best score per user, with a human-readable name. p_since limits the
+-- window (e.g. Monday 00:00 UTC for the weekly race); null = all-time.
+-- NOTE: the signature changed (p_since added); drop the old 2-arg overload
+-- first or PostgREST calls become ambiguous.
+drop function if exists public.arcade_leaderboard(text, integer);
+create or replace function public.arcade_leaderboard(
+  p_game text,
+  p_limit integer default 10,
+  p_since timestamptz default null
+)
 returns table (user_id uuid, display_name text, best_score integer, achieved_at timestamptz)
 language sql
 stable
@@ -67,6 +75,7 @@ as $$
       s.user_id, s.score as best_score, s.created_at as achieved_at
     from public.arcade_scores s
     where s.game = p_game
+      and (p_since is null or s.created_at >= p_since)
     order by s.user_id, s.score desc, s.created_at asc
   )
   select
@@ -84,8 +93,8 @@ as $$
   limit least(greatest(coalesce(p_limit, 10), 1), 50);
 $$;
 
-revoke all on function public.arcade_leaderboard(text, integer) from public;
-grant execute on function public.arcade_leaderboard(text, integer) to authenticated;
+revoke all on function public.arcade_leaderboard(text, integer, timestamptz) from public;
+grant execute on function public.arcade_leaderboard(text, integer, timestamptz) to authenticated;
 revoke all on function public.arcade_submit_score(text, integer) from public;
 grant execute on function public.arcade_submit_score(text, integer) to authenticated;
 revoke all on function public.arcade_personal_best(text) from public;

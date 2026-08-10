@@ -4,14 +4,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,15 +27,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ArcadeHomeScreen(
     leaderboard: LeaderboardService,
     onPlay2048: () -> Unit,
     onPlayMirrorDash: () -> Unit,
     onPlaySkyStack: () -> Unit,
+    onPlayTypingSprint: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -48,7 +56,10 @@ fun ArcadeHomeScreen(
             color = ArcadeColors.InkSoft,
         )
         Spacer(Modifier.height(28.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             GameCard(
                 title = "2048",
                 subtitle = "Join tiles, chase the crown",
@@ -66,6 +77,12 @@ fun ArcadeHomeScreen(
                 subtitle = "Stack from dusk to the stars",
                 badge = { TileBadge("▲", Color(0xFFFF9E7A)) },
                 onClick = onPlaySkyStack,
+            )
+            GameCard(
+                title = "Typing Sprint",
+                subtitle = "60 seconds, fast and clean",
+                badge = { TileBadge("⌨", Color(0xFF4CA6A8)) },
+                onClick = onPlayTypingSprint,
             )
         }
         ArcadeHomeInsights(leaderboard)

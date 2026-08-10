@@ -64,13 +64,30 @@ class LeaderboardService(
         return provider.rpc("arcade_submit_score", params).isSuccess
     }
 
-    /** Top N best-per-user scores for a game. */
-    suspend fun topScores(game: String, limit: Int = 10): Result<List<LeaderboardEntry>> {
+    /**
+     * Top N best-per-user scores for a game. [sinceIso] (ISO timestamp) limits
+     * the window — pass [weekStartIso] for the weekly board, null for all-time.
+     */
+    suspend fun topScores(
+        game: String,
+        limit: Int = 10,
+        sinceIso: String? = null,
+    ): Result<List<LeaderboardEntry>> {
         val provider = supabase
             ?: return Result.failure(IllegalStateException("Leaderboard unavailable"))
-        val params = """{"p_game":${JsonPrimitive(game)},"p_limit":$limit}"""
+        val since = if (sinceIso == null) "" else ""","p_since":${JsonPrimitive(sinceIso)}"""
+        val params = """{"p_game":${JsonPrimitive(game)},"p_limit":$limit$since}"""
         return provider.rpc("arcade_leaderboard", params).mapCatching { body ->
             json.decodeFromString<List<LeaderboardEntry>>(body)
+        }
+    }
+
+    companion object {
+        /** Monday 00:00 UTC of the current week — the weekly race window. */
+        fun weekStartIso(): String {
+            val monday = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+            return monday.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toString()
         }
     }
 

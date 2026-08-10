@@ -12,6 +12,8 @@ import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashScreen
 import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashViewModel
 import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackScreen
 import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackViewModel
+import ai.rever.boss.plugin.dynamic.arcade.typingsprint.TypingSprintScreen
+import ai.rever.boss.plugin.dynamic.arcade.typingsprint.TypingSprintViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.runtime.Composable
@@ -68,6 +70,7 @@ class ArcadeTabComponent(
     private var game2048: Game2048ViewModel? = null
     private var mirrorDash: MirrorDashViewModel? = null
     private var skyStack: SkyStackViewModel? = null
+    private var typingSprint: TypingSprintViewModel? = null
 
     init {
         services.activeArcadeTab = this
@@ -75,6 +78,7 @@ class ArcadeTabComponent(
             game2048?.onDisposed()
             mirrorDash?.onDisposed()
             skyStack?.onDisposed()
+            typingSprint?.onDisposed()
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
             if (services.activeArcadeTab === this) services.activeArcadeTab = null
             componentScope.cancel()
@@ -100,6 +104,9 @@ class ArcadeTabComponent(
     private fun skyStack(): SkyStackViewModel =
         skyStack ?: SkyStackViewModel(componentScope, services).also { skyStack = it }
 
+    private fun typingSprint(): TypingSprintViewModel =
+        typingSprint ?: TypingSprintViewModel(componentScope, services).also { typingSprint = it }
+
     @Composable
     override fun Content() {
         ArcadeBackground {
@@ -109,6 +116,7 @@ class ArcadeTabComponent(
                     onPlay2048 = { screen = ArcadeScreen.Game2048 },
                     onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
                     onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
+                    onPlayTypingSprint = { screen = ArcadeScreen.TypingSprint },
                 )
                 ArcadeScreen.Game2048 -> Game2048Screen(
                     viewModel = game2048(),
@@ -131,9 +139,14 @@ class ArcadeTabComponent(
                         screen = ArcadeScreen.Home
                     },
                 )
+                ArcadeScreen.TypingSprint -> TypingSprintScreen(
+                    viewModel = typingSprint(),
+                    leaderboard = services.leaderboard,
+                    onBack = { screen = ArcadeScreen.Home },
+                )
             }
         }
     }
 }
 
-enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack }
+enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint }

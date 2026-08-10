@@ -11,6 +11,8 @@ original single-file HTML versions.
   - **Mirror Dash** — one-tap survival runner (tap/Space to reverse two mirrored
     sparks, dodge gates, collect shards for combo). Native Compose Canvas port
     of the original HTML canvas game; the WebAudio beeps did not carry over.
+  - **Typing Sprint** — 60 seconds of typing; score = WPM × accuracy (correct
+    characters only, paste-proof). The clock starts on the first keystroke.
   - **Sky Stack** — tap/Space to drop alternating isometric blocks, trim misses,
     and chain perfect landings while the backdrop climbs from dusk to space.
     The game screen captures keyboard focus on entry, so Space works before the

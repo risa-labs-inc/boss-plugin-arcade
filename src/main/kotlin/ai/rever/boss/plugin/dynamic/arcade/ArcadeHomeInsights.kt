@@ -2,7 +2,10 @@ package ai.rever.boss.plugin.dynamic.arcade
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -34,40 +37,79 @@ private data class GameBoard(val title: String, val entries: List<LeaderboardEnt
  * it takes to beat them. Renders nothing while unavailable — the home page
  * stays clean when signed out or before the first score lands.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
     var boards by remember { mutableStateOf<List<GameBoard>?>(null) }
+    var weekly by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(weekly) {
         if (!leaderboard.isAvailable) return@LaunchedEffect
         leaderboard.awaitPendingSubmits()
+        val since = if (weekly) LeaderboardService.weekStartIso() else null
         boards = listOf(
             "2048" to "2048",
             "mirror-dash" to "Mirror Dash",
             "sky-stack" to "Sky Stack",
+            "typing-sprint" to "Typing Sprint",
         ).map { (key, title) ->
-            GameBoard(title, leaderboard.topScores(key, 15).getOrNull().orEmpty())
+            GameBoard(title, leaderboard.topScores(key, 15, sinceIso = since).getOrNull().orEmpty())
         }
     }
 
     val loaded = boards ?: return
-    if (loaded.all { it.entries.isEmpty() }) return
+    if (!weekly && loaded.all { it.entries.isEmpty() }) return
 
     Spacer(Modifier.height(30.dp))
-    Text(
-        "ON THE BOARD",
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.6.sp,
-        color = ArcadeColors.Muted,
-    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "ON THE BOARD",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.6.sp,
+            color = ArcadeColors.Muted,
+        )
+        Spacer(Modifier.width(12.dp))
+        PeriodChip("All-time", selected = !weekly) { weekly = false }
+        Spacer(Modifier.width(6.dp))
+        PeriodChip("This week", selected = weekly) { weekly = true }
+    }
     Spacer(Modifier.height(10.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        for (board in loaded) {
-            if (board.entries.isNotEmpty()) {
-                GameBoardCard(board, leaderboard.currentUserId)
+    if (loaded.all { it.entries.isEmpty() }) {
+        Text(
+            "No scores this week yet — the race is wide open!",
+            fontSize = 12.sp,
+            color = ArcadeColors.InkSoft,
+        )
+    } else {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            for (board in loaded) {
+                if (board.entries.isNotEmpty()) {
+                    GameBoardCard(board, leaderboard.currentUserId)
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun PeriodChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (selected) ArcadeColors.Pink else ArcadeColors.Cell)
+            .plainClickable(onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(
+            label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) androidx.compose.ui.graphics.Color.White else ArcadeColors.InkSoft,
+        )
     }
 }
 

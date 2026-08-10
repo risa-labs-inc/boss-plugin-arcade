@@ -47,15 +47,23 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── MirrorDashRenderer.kt  # Compose Canvas frame rendering
 │   ├── MirrorDashScreen.kt    # withFrameNanos loop + input
 │   └── MirrorDashOverlays.kt  # HUD, start/pause/over cards
-└── skystack/
-    ├── SkyStackEngine.kt      # alternating-axis block simulation
-    ├── SkyStackViewModel.kt   # phase machine + best/leaderboard bookkeeping
-    ├── SkyStackRenderer.kt    # isometric blocks, sky, stars, offcuts, rings
-    ├── SkyStackScreen.kt      # frame loop + focus-safe keyboard/pointer input
-    ├── SkyStackOverlays.kt    # HUD, start/pause/over/whole-tower controls
-    ├── SkyStackSoundPlayer.kt # native synthesized HTML-equivalent tones
-    └── SkyStackTowerExport.kt # shareable full-tower SVG/PNG export
+├── skystack/
+│   ├── SkyStackEngine.kt      # alternating-axis block simulation
+│   ├── SkyStackViewModel.kt   # phase machine + best/leaderboard bookkeeping
+│   ├── SkyStackRenderer.kt    # isometric blocks, sky, stars, offcuts, rings
+│   ├── SkyStackScreen.kt      # frame loop + focus-safe keyboard/pointer input
+│   ├── SkyStackOverlays.kt    # HUD, start/pause/over/whole-tower controls
+│   ├── SkyStackSoundPlayer.kt # native synthesized HTML-equivalent tones
+│   └── SkyStackTowerExport.kt # shareable full-tower SVG/PNG export
+└── typingsprint/
+    ├── TypingPassages.kt        # passage pool
+    ├── TypingSprintViewModel.kt # 60s clock, WPM x accuracy scoring, submits
+    └── TypingSprintScreen.kt    # hidden-TextField input, per-char feedback
 ```
+
+Leaderboards have two windows: all-time and "this week" (Monday 00:00 UTC,
+`LeaderboardService.weekStartIso()` → `arcade_leaderboard(p_since)`); both the
+overlay and the home insights strip carry the toggle.
 
 Key patterns:
 - Providers from `PluginContext` are nullable — the game must always work with
