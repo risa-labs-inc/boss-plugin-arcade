@@ -48,38 +48,40 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun WordleHeader(state: WordleViewModel.UiState, onBack: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .plainClickable(onBack)
-                        .padding(4.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.ArrowBack,
-                        contentDescription = "Back to games",
-                        tint = ArcadeColors.InkSoft,
-                    )
-                }
-                Spacer(Modifier.widthIn(min = 6.dp))
-                Text(
-                    "Wordle",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = ArcadeColors.Ink,
+    // Title and chips share a row; the subtitle gets its own full-width line
+    // below so nothing can collide on narrow tabs.
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .plainClickable(onBack)
+                    .padding(4.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.ArrowBack,
+                    contentDescription = "Back to games",
+                    tint = ArcadeColors.InkSoft,
                 )
             }
+            Spacer(Modifier.widthIn(min = 6.dp))
             Text(
-                "Daily word #${state.puzzleNumber} — the whole team gets the same one.",
-                fontSize = 13.sp,
-                color = ArcadeColors.InkSoft,
+                "Wordle",
+                fontSize = 34.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = ArcadeColors.Ink,
             )
+            Spacer(Modifier.weight(1f))
+            WordleChip(label = "TODAY", value = if (state.points > 0) "+${state.points}" else "—")
+            Spacer(Modifier.widthIn(min = 8.dp))
+            WordleChip(label = "BEST", value = if (state.best > 0) "${state.best}" else "—")
         }
-        WordleChip(label = "TODAY", value = if (state.points > 0) "+${state.points}" else "—")
-        Spacer(Modifier.widthIn(min = 8.dp))
-        WordleChip(label = "BEST", value = if (state.best > 0) "${state.best}" else "—")
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Daily word #${state.puzzleNumber} · same word for the whole team",
+            fontSize = 13.sp,
+            color = ArcadeColors.InkSoft,
+        )
     }
 }
 
@@ -90,8 +92,8 @@ private fun WordleChip(label: String, value: String) {
             .shadow(6.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
             .background(ArcadeColors.Chip)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-            .widthIn(min = 48.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .widthIn(min = 44.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -103,10 +105,69 @@ private fun WordleChip(label: String, value: String) {
         )
         Text(
             value,
-            fontSize = 20.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.ExtraBold,
             color = ArcadeColors.Ink,
         )
+    }
+}
+
+/**
+ * Compact how-to-play card, shown automatically on a fresh board and
+ * toggleable from the "?" button.
+ */
+@Composable
+internal fun WordleHelpCard(modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(ArcadeColors.Chip.copy(alpha = 0.9f))
+            .padding(14.dp),
+    ) {
+        Text(
+            "HOW TO PLAY",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.6.sp,
+            color = ArcadeColors.Muted,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Guess today's 5-letter word in 6 tries. Just start typing (or click " +
+                "the keys below), then press Enter to submit a guess.",
+            fontSize = 12.sp,
+            color = ArcadeColors.InkSoft,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HelpLegend(WordleColors.Correct, "right spot")
+            Spacer(Modifier.widthIn(min = 12.dp))
+            HelpLegend(WordleColors.Present, "wrong spot")
+            Spacer(Modifier.widthIn(min = 12.dp))
+            HelpLegend(WordleColors.Absent, "not in word")
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Everyone gets the same word · new word at UTC midnight · fewer guesses, more points",
+            fontSize = 11.sp,
+            color = ArcadeColors.Muted,
+        )
+    }
+}
+
+@Composable
+private fun HelpLegend(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .height(12.dp)
+                .widthIn(min = 12.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color),
+        )
+        Spacer(Modifier.widthIn(min = 5.dp))
+        Text(label, fontSize = 11.sp, color = ArcadeColors.InkSoft)
     }
 }
 

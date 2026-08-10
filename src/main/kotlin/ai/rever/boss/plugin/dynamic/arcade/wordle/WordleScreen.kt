@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -106,57 +108,82 @@ fun WordleScreen(
             }
         }
 
-        val contentWidth = minOf(maxWidth - 48.dp, 430.dp).coerceAtLeast(280.dp)
+        val contentWidth = minOf(maxWidth - 40.dp, 430.dp).coerceAtLeast(240.dp)
         val tileSize = minOf(
             (contentWidth - 24.dp) / 5,
-            (maxHeight - 320.dp) / 6,
-            58.dp,
-        ).coerceAtLeast(30.dp)
+            (maxHeight - 340.dp) / 6,
+            56.dp,
+        ).coerceAtLeast(36.dp)
+        val keyWidth = ((contentWidth - 60.dp) / 10).coerceIn(24.dp, 34.dp)
 
+        // Fresh board: lead with the how-to card; the "?" button toggles it back.
+        var helpOverride by remember { mutableStateOf<Boolean?>(null) }
+        val showHelp = helpOverride
+            ?: (state.rows.isEmpty() && state.phase == WordleViewModel.Phase.PLAYING)
+
+        // Scrollable so short tabs never clip the keyboard or overlap sections.
         Column(
-            modifier = Modifier.width(contentWidth).padding(vertical = 16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            WordleHeader(state = state, onBack = onBack)
-            Spacer(Modifier.height(14.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Column(
+                modifier = Modifier.width(contentWidth),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                ArcadeGhostButton(text = "Leaderboard", onClick = { showLeaderboard = true })
-                Icon(
-                    Icons.Outlined.EmojiEvents,
-                    contentDescription = null,
-                    tint = ArcadeColors.Muted,
-                )
-                Spacer(Modifier.weight(1f))
-                if (state.phase != WordleViewModel.Phase.PLAYING && !state.veil) {
-                    ArcadeGhostButton(text = "Result", onClick = { viewModel.showVeil() })
+                WordleHeader(state = state, onBack = onBack)
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ArcadeGhostButton(text = "Leaderboard", onClick = { showLeaderboard = true })
+                    Icon(
+                        Icons.Outlined.EmojiEvents,
+                        contentDescription = null,
+                        tint = ArcadeColors.Muted,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (state.phase != WordleViewModel.Phase.PLAYING && !state.veil) {
+                        ArcadeGhostButton(text = "Result", onClick = { viewModel.showVeil() })
+                    }
+                    ArcadeGhostButton(
+                        text = "?",
+                        onClick = { helpOverride = !showHelp },
+                    )
                 }
-            }
-            Spacer(Modifier.height(12.dp))
-            Box {
-                WordleGrid(state = state, tileSize = tileSize)
-                WordleToast(
-                    message = state.message,
-                    messageSeq = state.messageSeq,
-                    modifier = Modifier.align(Alignment.TopCenter),
+                if (showHelp) {
+                    Spacer(Modifier.height(12.dp))
+                    WordleHelpCard()
+                }
+                Spacer(Modifier.height(12.dp))
+                Box {
+                    WordleGrid(state = state, tileSize = tileSize)
+                    WordleToast(
+                        message = state.message,
+                        messageSeq = state.messageSeq,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                WordleKeyboard(
+                    keyStates = WordleLogic.keyStates(state.rows),
+                    onKey = viewModel::onKey,
+                    onEnter = viewModel::onEnter,
+                    onBackspace = viewModel::onBackspace,
+                    keyWidth = keyWidth,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Type your guess and press Enter. Fewer guesses, more points.",
+                    fontSize = 12.sp,
+                    color = ArcadeColors.Muted,
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            WordleKeyboard(
-                keyStates = WordleLogic.keyStates(state.rows),
-                onKey = viewModel::onKey,
-                onEnter = viewModel::onEnter,
-                onBackspace = viewModel::onBackspace,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Type your guess and press Enter. Fewer guesses, more points.",
-                fontSize = 12.sp,
-                color = ArcadeColors.Muted,
-            )
         }
 
         WordleVeil(

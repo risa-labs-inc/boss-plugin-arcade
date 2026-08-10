@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -27,7 +28,8 @@ private val KEY_ROWS = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM")
 
 /**
  * On-screen QWERTY keyboard, colored by the best-known verdict per letter.
- * Clicks feed the same entry points as physical keys.
+ * Clicks feed the same entry points as physical keys. [keyWidth] lets the
+ * screen scale the keyboard down to narrow tabs instead of overflowing.
  */
 @Composable
 fun WordleKeyboard(
@@ -35,6 +37,7 @@ fun WordleKeyboard(
     onKey: (Char) -> Unit,
     onEnter: () -> Unit,
     onBackspace: () -> Unit,
+    keyWidth: Dp = 32.dp,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -43,13 +46,13 @@ fun WordleKeyboard(
         KEY_ROWS.forEachIndexed { rowIndex, letters ->
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 if (rowIndex == KEY_ROWS.lastIndex) {
-                    WideKey("ENTER", onEnter)
+                    WideKey("ENTER", keyWidth, onEnter)
                 }
                 for (letter in letters) {
-                    LetterKey(letter, keyStates[letter], onKey)
+                    LetterKey(letter, keyStates[letter], keyWidth, onKey)
                 }
                 if (rowIndex == KEY_ROWS.lastIndex) {
-                    WideKey("⌫", onBackspace)
+                    WideKey("⌫", keyWidth, onBackspace)
                 }
             }
         }
@@ -57,7 +60,12 @@ fun WordleKeyboard(
 }
 
 @Composable
-private fun LetterKey(letter: Char, state: LetterState?, onKey: (Char) -> Unit) {
+private fun LetterKey(
+    letter: Char,
+    state: LetterState?,
+    keyWidth: Dp,
+    onKey: (Char) -> Unit,
+) {
     // Keys recolor after the row finishes flipping, like the original.
     val background by animateColorAsState(
         targetValue = state?.let { WordleColors.of(it) } ?: ArcadeColors.Chip,
@@ -67,17 +75,17 @@ private fun LetterKey(letter: Char, state: LetterState?, onKey: (Char) -> Unit) 
         label = letter.toString(),
         background = background,
         foreground = if (state != null) Color.White else ArcadeColors.Ink,
-        width = 32.dp,
+        width = keyWidth,
     ) { onKey(letter) }
 }
 
 @Composable
-private fun WideKey(label: String, onClick: () -> Unit) {
+private fun WideKey(label: String, keyWidth: Dp, onClick: () -> Unit) {
     Key(
         label = label,
         background = ArcadeColors.Frame,
         foreground = ArcadeColors.Ink,
-        width = 52.dp,
+        width = keyWidth * 1.6f,
         onClick = onClick,
     )
 }
@@ -87,13 +95,13 @@ private fun Key(
     label: String,
     background: Color,
     foreground: Color,
-    width: androidx.compose.ui.unit.Dp,
+    width: Dp,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .width(width)
-            .height(42.dp)
+            .height(40.dp)
             .clip(RoundedCornerShape(7.dp))
             .background(background)
             .plainClickable(onClick),
