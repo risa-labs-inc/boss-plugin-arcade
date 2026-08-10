@@ -6,16 +6,19 @@ import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
 import ai.rever.boss.plugin.api.SplitViewOperations
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import kotlinx.coroutines.CoroutineScope
 
 const val ARCADE_PLUGIN_ID = "ai.rever.boss.plugin.dynamic.arcade"
 
 /**
  * Implemented by the Arcade tab component so the MCP tools can bring the game
- * they're driving onto the user's screen (navigate the tab to the 2048 board).
+ * they're driving onto the user's screen (navigate the tab to that game).
  */
 interface ArcadeGameHost {
     fun showGame2048(): Game2048ViewModel
+
+    fun showWordle(): WordleViewModel
 }
 
 /**
@@ -36,6 +39,10 @@ class ArcadeServices(
      */
     @Volatile
     var activeGame2048: Game2048ViewModel? = null
+
+    /** Same idea for the daily Wordle board. */
+    @Volatile
+    var activeWordle: WordleViewModel? = null
 
     /** The most recently opened Arcade tab; lets MCP tools surface the board. */
     @Volatile

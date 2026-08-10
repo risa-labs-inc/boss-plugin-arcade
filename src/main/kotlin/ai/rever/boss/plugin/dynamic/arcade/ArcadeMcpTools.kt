@@ -5,14 +5,16 @@ import ai.rever.boss.plugin.api.McpToolHandler
 import ai.rever.boss.plugin.api.McpToolProvider
 import ai.rever.boss.plugin.api.McpToolResult
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * MCP tools for in-terminal agents (surfaced as mcp__boss__arcade_*):
- * read the leaderboards, and play the live 2048 game in the open Arcade tab —
- * every move renders on the user's screen. Mirror Dash is reflex/real-time, so
- * it has no play tools, only the leaderboard.
+ * read the leaderboards, and play the live turn-based games (2048, Wordle) in
+ * the open Arcade tab — every move renders on the user's screen. Mirror Dash
+ * and Sky Stack are reflex/real-time, so they have no play tools, only the
+ * leaderboard.
  */
 class ArcadeMcpTools(
     override val providerId: String,
@@ -22,8 +24,8 @@ class ArcadeMcpTools(
     override fun tools(): List<McpToolDefinition> = listOf(
         McpToolDefinition(
             name = "arcade_leaderboard",
-            description = "Arcade leaderboard: top scores per player. Games: 2048, mirror-dash, sky-stack, typing-sprint.",
-            inputSchema = """{"type":"object","properties":{"game":{"type":"string","description":"Game key: 2048 (default), mirror-dash, or sky-stack"},"limit":{"type":"integer","description":"Max entries (default 10)"}},"required":[]}""",
+            description = "Arcade leaderboard: top scores per player. Games: 2048, mirror-dash, sky-stack, typing-sprint, wordle (points = 7 minus guesses used).",
+            inputSchema = """{"type":"object","properties":{"game":{"type":"string","description":"Game key: 2048 (default), mirror-dash, sky-stack, typing-sprint, or wordle"},"limit":{"type":"integer","description":"Max entries (default 10)"}},"required":[]}""",
             handler = McpToolHandler { args ->
                 val game = args.string("game") ?: "2048"
                 val limit = (args.int("limit") ?: 10).coerceIn(1, 50)
@@ -94,6 +96,32 @@ class ArcadeMcpTools(
             },
         ),
         McpToolDefinition(
+            name = "arcade_wordle_state",
+            description = "Read today's live Wordle board in the open Arcade tab as JSON: committed guesses with per-letter feedback (G = correct spot, Y = in the word elsewhere, B = absent), phase (playing/won/lost), and the solution once the game is over. The word is shared: everyone gets the same one each UTC day.",
+            handler = McpToolHandler {
+                withWordle { game -> McpToolResult(game.snapshotJson()) }
+            },
+        ),
+        McpToolDefinition(
+            name = "arcade_wordle_guess",
+            description = "Play a 5-letter guess on today's live Wordle board. The Arcade tab switches to the board so the user watches the tiles flip. One shared word per UTC day, 6 guesses total; solving in fewer guesses scores more points. Returns the board JSON after the reveal.",
+            inputSchema = """{"type":"object","properties":{"word":{"type":"string","description":"A 5-letter word from the game's dictionary"}},"required":["word"]}""",
+            readOnly = false,
+            handler = McpToolHandler { args ->
+                val word = args.string("word")
+                    ?: return@McpToolHandler McpToolResult("word is required", isError = true)
+                withWordle { game ->
+                    val error = game.tryGuess(word)
+                    if (error != null) {
+                        McpToolResult(error, isError = true)
+                    } else {
+                        delay(WordleViewModel.REVEAL_TOTAL_MS + 600)
+                        McpToolResult(game.snapshotJson())
+                    }
+                }
+            },
+        ),
+        McpToolDefinition(
             name = "arcade_2048_keep_going",
             description = "Dismiss the 'You hit 2048' dialog and continue the current run toward higher tiles.",
             readOnly = false,
@@ -124,6 +152,27 @@ class ArcadeMcpTools(
             ?: return McpToolResult(
                 "No Arcade tab is available and one could not be opened. Ask the user " +
                     "to open an Arcade tab (new tab → Arcade) — your moves will play " +
+                    "out on their screen.",
+                isError = true,
+            )
+        return block(game)
+    }
+
+    /** Same as [withGame], but surfaces the Wordle board. */
+    private suspend inline fun withWordle(
+        crossinline block: suspend (WordleViewModel) -> McpToolResult,
+    ): McpToolResult {
+        if (services.activeArcadeTab == null) {
+            runCatching { services.splitView?.openTab(ArcadeTabInfo()) }
+            withTimeoutOrNull(2500) {
+                while (services.activeArcadeTab == null) delay(100)
+            }
+        }
+        val game = services.activeArcadeTab?.let { runCatching { it.showWordle() }.getOrNull() }
+            ?: services.activeWordle
+            ?: return McpToolResult(
+                "No Arcade tab is available and one could not be opened. Ask the user " +
+                    "to open an Arcade tab (new tab → Arcade) — your guesses will play " +
                     "out on their screen.",
                 isError = true,
             )

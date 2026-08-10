@@ -14,6 +14,8 @@ import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackScreen
 import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackViewModel
 import ai.rever.boss.plugin.dynamic.arcade.typingsprint.TypingSprintScreen
 import ai.rever.boss.plugin.dynamic.arcade.typingsprint.TypingSprintViewModel
+import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleScreen
+import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.runtime.Composable
@@ -71,6 +73,7 @@ class ArcadeTabComponent(
     private var mirrorDash: MirrorDashViewModel? = null
     private var skyStack: SkyStackViewModel? = null
     private var typingSprint: TypingSprintViewModel? = null
+    private var wordle: WordleViewModel? = null
 
     init {
         services.activeArcadeTab = this
@@ -79,7 +82,9 @@ class ArcadeTabComponent(
             mirrorDash?.onDisposed()
             skyStack?.onDisposed()
             typingSprint?.onDisposed()
+            wordle?.onDisposed()
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
+            if (services.activeWordle === wordle) services.activeWordle = null
             if (services.activeArcadeTab === this) services.activeArcadeTab = null
             componentScope.cancel()
         }
@@ -89,6 +94,13 @@ class ArcadeTabComponent(
     override fun showGame2048(): Game2048ViewModel {
         val vm = game2048()
         screen = ArcadeScreen.Game2048
+        return vm
+    }
+
+    /** MCP entry point: make the Wordle board the visible screen and return its game. */
+    override fun showWordle(): WordleViewModel {
+        val vm = wordle()
+        screen = ArcadeScreen.Wordle
         return vm
     }
 
@@ -107,6 +119,12 @@ class ArcadeTabComponent(
     private fun typingSprint(): TypingSprintViewModel =
         typingSprint ?: TypingSprintViewModel(componentScope, services).also { typingSprint = it }
 
+    private fun wordle(): WordleViewModel =
+        wordle ?: WordleViewModel(componentScope, services).also {
+            wordle = it
+            services.activeWordle = it
+        }
+
     @Composable
     override fun Content() {
         ArcadeBackground {
@@ -117,6 +135,7 @@ class ArcadeTabComponent(
                     onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
                     onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
                     onPlayTypingSprint = { screen = ArcadeScreen.TypingSprint },
+                    onPlayWordle = { screen = ArcadeScreen.Wordle },
                 )
                 ArcadeScreen.Game2048 -> Game2048Screen(
                     viewModel = game2048(),
@@ -144,9 +163,14 @@ class ArcadeTabComponent(
                     leaderboard = services.leaderboard,
                     onBack = { screen = ArcadeScreen.Home },
                 )
+                ArcadeScreen.Wordle -> WordleScreen(
+                    viewModel = wordle(),
+                    leaderboard = services.leaderboard,
+                    onBack = { screen = ArcadeScreen.Home },
+                )
             }
         }
     }
 }
 
-enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint }
+enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint, Wordle }

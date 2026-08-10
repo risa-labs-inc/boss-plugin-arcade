@@ -35,6 +35,7 @@ fun ArcadeHomeScreen(
     onPlayMirrorDash: () -> Unit,
     onPlaySkyStack: () -> Unit,
     onPlayTypingSprint: () -> Unit,
+    onPlayWordle: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -83,6 +84,12 @@ fun ArcadeHomeScreen(
                 subtitle = "60 seconds, fast and clean",
                 badge = { TileBadge("⌨", Color(0xFF4CA6A8)) },
                 onClick = onPlayTypingSprint,
+            )
+            GameCard(
+                title = "Wordle",
+                subtitle = "One shared word a day",
+                badge = { TileBadge("W", Color(0xFF6AAA64)) },
+                onClick = onPlayWordle,
             )
         }
         ArcadeHomeInsights(leaderboard)

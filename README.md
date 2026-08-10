@@ -19,6 +19,11 @@ original single-file HTML versions.
     first mouse click. Native synthesized tones preserve the original landing,
     perfect-combo, and game-over sounds. After a run, **View Full Tower** zooms
     the entire final stack into view and can save it as a shareable SVG or PNG.
+  - **Wordle** — the daily word game. Everyone gets the same word (a hash of
+    the UTC epoch day picks from the original's 2,315 answers — no server
+    involved), one board per day, and solving in fewer guesses scores more
+    points (7 − guesses). Guesses persist locally, so closing the tab never
+    grants a retry, and the result card copies the classic emoji share grid.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in
@@ -51,12 +56,15 @@ preferred.
 Surfaced to in-terminal agents as `mcp__boss__arcade_*`:
 
 - `arcade_leaderboard` — top scores per player for a game (2048, mirror-dash,
-  or sky-stack).
+  sky-stack, typing-sprint, or wordle).
 - `arcade_2048_state` / `arcade_2048_move` / `arcade_2048_new_game` /
   `arcade_2048_keep_going` — read and play the live 2048 board in the open
   Arcade tab; the agent's moves animate on the user's screen. Requires an
   Arcade tab with 2048 open. Mirror Dash and Sky Stack are reflex/real-time, so
   they expose no play tools.
+- `arcade_wordle_state` / `arcade_wordle_guess` — read and play today's live
+  Wordle board; the agent's guesses flip on the user's screen and burn the
+  user's shared daily board, so agents should only play when asked.
 
 The home screen also shows an "On the board" strip (top-3 podium, player count,
 latest score per game) so the picker itself advertises the competition.

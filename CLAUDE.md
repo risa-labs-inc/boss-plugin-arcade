@@ -55,10 +55,18 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── SkyStackOverlays.kt    # HUD, start/pause/over/whole-tower controls
 │   ├── SkyStackSoundPlayer.kt # native synthesized HTML-equivalent tones
 │   └── SkyStackTowerExport.kt # shareable full-tower SVG/PNG export
-└── typingsprint/
-    ├── TypingPassages.kt        # passage pool
-    ├── TypingSprintViewModel.kt # 60s clock, WPM x accuracy scoring, submits
-    └── TypingSprintScreen.kt    # hidden-TextField input, per-char feedback
+├── typingsprint/
+│   ├── TypingPassages.kt        # passage pool
+│   ├── TypingSprintViewModel.kt # 60s clock, WPM x accuracy scoring, submits
+│   └── TypingSprintScreen.kt    # hidden-TextField input, per-char feedback
+└── wordle/
+    ├── WordleWords.kt        # embedded answer + guess dictionaries, daily pick
+    ├── WordleLogic.kt        # pure rules: evaluation, key hints, points
+    ├── WordleViewModel.kt    # daily state machine, per-guess persistence
+    ├── WordleGrid.kt         # 6x5 board, tile flip/shake animations
+    ├── WordleKeyboard.kt     # on-screen QWERTY with verdict coloring
+    ├── WordleChrome.kt       # header, toast, result veil + countdown
+    └── WordleScreen.kt       # assembly + physical keyboard input
 ```
 
 Leaderboards have two windows: all-time and "this week" (Monday 00:00 UTC,
@@ -74,6 +82,9 @@ Key patterns:
   coroutines use the tab component's scope (cancelled on destroy).
 - Backend: `supabase/arcade_schema.sql` (RLS insert-own/read-authenticated,
   `arcade_submit_score` / `arcade_personal_best` / `arcade_leaderboard` RPCs).
+- Wordle's shared daily word is client-derived (hash of the UTC epoch day over
+  the embedded answer list) — no server, so every machine agrees; the day's
+  guesses persist to plugin storage per user so a board can't be replayed.
 
 ## Adding a new game (checklist)
 

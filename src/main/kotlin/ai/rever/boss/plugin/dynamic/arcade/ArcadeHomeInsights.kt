@@ -52,6 +52,7 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
             "mirror-dash" to "Mirror Dash",
             "sky-stack" to "Sky Stack",
             "typing-sprint" to "Typing Sprint",
+            "wordle" to "Wordle",
         ).map { (key, title) ->
             GameBoard(title, leaderboard.topScores(key, 15, sinceIso = since).getOrNull().orEmpty())
         }
