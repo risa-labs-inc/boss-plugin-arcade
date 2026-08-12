@@ -1,5 +1,6 @@
 package ai.rever.boss.plugin.dynamic.arcade.game2048
 
+import ai.rever.boss.plugin.dynamic.arcade.ArcadeEvent
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -174,6 +175,7 @@ class Game2048ViewModel(
         undoSnapshot = null
         submittedScore = 0
         bestToSubmit = 0
+        services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.START)
         var tiles = emptyList<TileData>()
         repeat(2) { Game2048Logic.spawn(tiles, nextId++)?.let { tiles = tiles + it } }
         val cur = _state.value
@@ -234,7 +236,9 @@ class Game2048ViewModel(
             val value = bestToSubmit
             if (value > submittedScore) {
                 submittedScore = value
-                services.leaderboard.submitAsync(services.pluginScope, GAME, value)
+                services.leaderboard.submitAsync(
+                    services.pluginScope, GAME, value, ArcadeEvent.PROGRESS,
+                )
             }
         }
     }
@@ -253,8 +257,8 @@ class Game2048ViewModel(
     private fun loadBest() {
         scope.launch {
             val local = services.storage?.getInt(bestKey(), 0) ?: 0
-            val remote = runCatching { services.leaderboard.personalBest(GAME) }.getOrNull() ?: 0
-            val best = maxOf(local, remote)
+            // syncBest also pushes a local best the server never received.
+            val best = runCatching { services.leaderboard.syncBest(GAME, local) }.getOrNull() ?: local
             if (best > _state.value.best) {
                 _state.value = _state.value.copy(best = best)
             }

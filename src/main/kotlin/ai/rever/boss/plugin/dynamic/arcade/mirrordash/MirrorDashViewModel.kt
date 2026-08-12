@@ -1,5 +1,6 @@
 package ai.rever.boss.plugin.dynamic.arcade.mirrordash
 
+import ai.rever.boss.plugin.dynamic.arcade.ArcadeEvent
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,7 +17,12 @@ class MirrorDashViewModel(
     private val scope: CoroutineScope,
     private val services: ArcadeServices,
 ) {
-    companion object { const val GAME = "mirror-dash" }
+    companion object {
+        const val GAME = "mirror-dash"
+
+        /** How long the game-over card is safe from a still-mashing spacebar. */
+        private const val RESTART_LOCKOUT_MS = 500L
+    }
 
     enum class Phase { MENU, PLAYING, PAUSED, OVER }
 
@@ -34,6 +40,7 @@ class MirrorDashViewModel(
         private set
 
     private var submittedScore = 0
+    private var overSince = 0L
 
     init {
         loadBest()
@@ -44,11 +51,33 @@ class MirrorDashViewModel(
         score = 0
         mult = 1
         isNewBest = false
+        // Per-run, not per-session: without this a run scoring below an earlier
+        // one in the same sitting is silently never recorded.
+        submittedScore = 0
         phase = Phase.PLAYING
+        services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.START)
     }
 
     fun reverse() {
         if (phase == Phase.PLAYING) engine.reverse()
+    }
+
+    /**
+     * The one-button input, for players who never touch the mouse. Spacebar
+     * routes here rather than straight to [reverse] so it means something in
+     * every phase — reverse() alone silently no-ops outside PLAYING, which made
+     * the key look dead on the start and game-over cards.
+     */
+    fun primaryAction() {
+        when (phase) {
+            Phase.MENU -> start()
+            // Mirror Dash is a mash-the-key game, so the player is usually still
+            // hammering space at the instant they die. Without this window the
+            // run restarts before the score card is on screen for even a frame.
+            Phase.OVER -> if (System.currentTimeMillis() - overSince >= RESTART_LOCKOUT_MS) start()
+            Phase.PAUSED -> phase = Phase.PLAYING
+            Phase.PLAYING -> engine.reverse()
+        }
     }
 
     fun togglePause() {
@@ -78,6 +107,7 @@ class MirrorDashViewModel(
 
     private fun onGameOver() {
         phase = Phase.OVER
+        overSince = System.currentTimeMillis()
         isNewBest = score > best
         if (isNewBest) {
             best = score
@@ -97,8 +127,8 @@ class MirrorDashViewModel(
     private fun loadBest() {
         scope.launch {
             val local = services.storage?.getInt(bestKey(), 0) ?: 0
-            val remote = runCatching { services.leaderboard.personalBest(GAME) }.getOrNull() ?: 0
-            val loaded = maxOf(local, remote)
+            // syncBest also pushes a local best the server never received.
+            val loaded = runCatching { services.leaderboard.syncBest(GAME, local) }.getOrNull() ?: local
             if (loaded > best) best = loaded
         }
     }

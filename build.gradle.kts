@@ -55,6 +55,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
     testImplementation(kotlin("test"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    // compileOnly does not reach the test classpath, but LeaderboardServiceTest
+    // fakes the host providers, so tests need the API on their own classpath.
+    if (useLocalDependencies) {
+        testImplementation(files("$bossPluginApiPath/build/libs/boss-plugin-api-1.0.64.jar"))
+    } else {
+        testImplementation(files("build/downloaded-deps/boss-plugin-api.jar"))
+    }
 }
 
 // Keep the default :jar (runs under `build`) from colliding with buildPluginJar's

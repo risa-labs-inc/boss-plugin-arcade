@@ -1,5 +1,6 @@
 package ai.rever.boss.plugin.dynamic.arcade.skystack
 
+import ai.rever.boss.plugin.dynamic.arcade.ArcadeEvent
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ class SkyStackViewModel(
         isNewBest = false
         submittedScore = 0
         phase = Phase.PLAYING
+        services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.START)
     }
 
     fun drop() {
@@ -128,8 +130,8 @@ class SkyStackViewModel(
     private fun loadBest() {
         scope.launch {
             val local = services.storage?.getInt(bestKey(), 0) ?: 0
-            val remote = runCatching { services.leaderboard.personalBest(GAME) }.getOrNull() ?: 0
-            val loaded = maxOf(local, remote)
+            // syncBest also pushes a local best the server never received.
+            val loaded = runCatching { services.leaderboard.syncBest(GAME, local) }.getOrNull() ?: local
             if (loaded > best) best = loaded
         }
     }

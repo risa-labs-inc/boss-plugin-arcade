@@ -1,5 +1,6 @@
 package ai.rever.boss.plugin.dynamic.arcade.wordle
 
+import ai.rever.boss.plugin.dynamic.arcade.ArcadeEvent
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -117,6 +118,12 @@ class WordleViewModel(
             return false
         }
 
+        // The day's first accepted guess is where the attempt actually begins —
+        // not startDay(), which re-runs on every tab open to restore saved state.
+        if (s.rows.isEmpty()) {
+            services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.START)
+        }
+
         val row = GuessRow(word, WordleLogic.evaluate(word, answer))
         val rows = s.rows + row
         _state.value = s.copy(
@@ -154,6 +161,10 @@ class WordleViewModel(
         if (points > 0) {
             if (best > s.best) persistBest(best)
             services.leaderboard.submitAsync(services.pluginScope, GAME, points)
+        } else {
+            // A loss scores nothing but is still an attempt that happened; without
+            // this row, failed Wordles are invisible to usage reporting.
+            services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.FINAL)
         }
         scope.launch {
             delay(VEIL_DELAY_MS)
@@ -285,8 +296,8 @@ class WordleViewModel(
     private fun loadBest() {
         scope.launch {
             val local = services.storage?.getInt(bestKey(), 0) ?: 0
-            val remote = runCatching { services.leaderboard.personalBest(GAME) }.getOrNull() ?: 0
-            val best = maxOf(local, remote)
+            // syncBest also pushes a local best the server never received.
+            val best = runCatching { services.leaderboard.syncBest(GAME, local) }.getOrNull() ?: local
             if (best > _state.value.best) {
                 _state.value = _state.value.copy(best = best)
             }

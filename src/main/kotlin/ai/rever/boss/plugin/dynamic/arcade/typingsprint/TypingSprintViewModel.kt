@@ -1,5 +1,6 @@
 package ai.rever.boss.plugin.dynamic.arcade.typingsprint
 
+import ai.rever.boss.plugin.dynamic.arcade.ArcadeEvent
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,7 +89,11 @@ class TypingSprintViewModel(
 
     private fun start() {
         phase = Phase.RUNNING
+        // Per-run, not per-session: without this a sprint slower than an earlier
+        // one in the same sitting is silently never recorded.
+        submittedScore = 0
         startedAt = System.currentTimeMillis()
+        services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.START)
         timerJob = scope.launch {
             while (true) {
                 delay(100)
@@ -145,8 +150,8 @@ class TypingSprintViewModel(
     private fun loadBest() {
         scope.launch {
             val local = services.storage?.getInt(bestKey(), 0) ?: 0
-            val remote = runCatching { services.leaderboard.personalBest(GAME) }.getOrNull() ?: 0
-            val loaded = maxOf(local, remote)
+            // syncBest also pushes a local best the server never received.
+            val loaded = runCatching { services.leaderboard.syncBest(GAME, local) }.getOrNull() ?: local
             if (loaded > best) best = loaded
         }
     }

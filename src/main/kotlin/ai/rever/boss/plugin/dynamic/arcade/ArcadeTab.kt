@@ -77,6 +77,12 @@ class ArcadeTabComponent(
 
     init {
         services.activeArcadeTab = this
+        // Deliver anything an earlier session recorded but never got to send.
+        services.leaderboard.flushPending(services.pluginScope)
+        // Reach, including the people who open the Arcade and never score.
+        services.leaderboard.recordEvent(
+            services.pluginScope, LeaderboardService.ARCADE_KEY, ArcadeEvent.OPEN,
+        )
         lifecycle.doOnDestroy {
             game2048?.onDisposed()
             mirrorDash?.onDisposed()

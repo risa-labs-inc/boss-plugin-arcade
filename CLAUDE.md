@@ -82,6 +82,14 @@ Key patterns:
   coroutines use the tab component's scope (cancelled on destroy).
 - Backend: `supabase/arcade_schema.sql` (RLS insert-own/read-authenticated,
   `arcade_submit_score` / `arcade_personal_best` / `arcade_leaderboard` RPCs).
+- Telemetry: every row carries an `ArcadeEvent` — `open` (tab opened), `start`
+  (run began), `progress` (mid-run best sync), `final` (run ended). **A row is
+  not a run: count `event = 'start'`,** or just read the `arcade_usage_daily`
+  view. `final` can fire twice for one 2048 run (win, then game over), and
+  `progress` fires every 2s while a 2048 run is live. Rows written before this
+  model landed are marked `legacy` and cannot be classified — exclude them.
+  Only `final` scores take the durable replay path; losing an `open`/`start`
+  costs one telemetry point and is not worth a storage write per event.
 - Wordle's shared daily word is client-derived (hash of the UTC epoch day over
   the embedded answer list) — no server, so every machine agrees; the day's
   guesses persist to plugin storage per user so a board can't be replayed.

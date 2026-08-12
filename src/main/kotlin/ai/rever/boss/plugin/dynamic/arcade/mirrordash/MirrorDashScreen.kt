@@ -70,7 +70,13 @@ fun MirrorDashScreen(
                     return@onPreviewKeyEvent false
                 }
                 when (event.key) {
-                    Key.Spacebar, Key.DirectionLeft, Key.DirectionRight -> {
+                    // Consumed in every phase, so it must also DO something in
+                    // every phase — otherwise it just eats the focused button's
+                    // own spacebar activation and the key reads as broken.
+                    Key.Spacebar -> {
+                        viewModel.primaryAction(); true
+                    }
+                    Key.DirectionLeft, Key.DirectionRight -> {
                         viewModel.reverse(); true
                     }
                     Key.P, Key.Escape -> {

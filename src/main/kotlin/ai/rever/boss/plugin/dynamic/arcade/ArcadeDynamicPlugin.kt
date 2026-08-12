@@ -26,12 +26,21 @@ interface ArcadeGameHost {
  * fully offline/logged-out — leaderboard features degrade gracefully.
  */
 class ArcadeServices(
-    val pluginScope: CoroutineScope,
+    private val scopeProvider: () -> CoroutineScope,
     val auth: AuthDataProvider?,
     val storage: PluginStorageProvider?,
     val leaderboard: LeaderboardService,
     val splitView: SplitViewOperations?,
 ) {
+    /**
+     * Resolved on every use, never cached. The host watchdog restarts a plugin
+     * sandbox by cancelling its coroutine scope and installing a fresh one
+     * WITHOUT re-running register(), so a scope captured at registration is
+     * dead for the rest of the session and every launch on it silently does
+     * nothing. Caching it is how finished runs stopped reaching the leaderboard.
+     */
+    val pluginScope: CoroutineScope get() = scopeProvider()
+
     /**
      * The 2048 game in the most recently opened Arcade tab, exposed so the MCP
      * tools can let an agent play it live on the user's screen. Null when no
@@ -60,11 +69,16 @@ object ArcadeDynamicPlugin : DynamicPlugin {
     private var services: ArcadeServices? = null
 
     override fun register(context: PluginContext) {
+        val storage = context.pluginStorageFactory?.createStorage(pluginId)
         val services = ArcadeServices(
-            pluginScope = context.pluginScope,
+            scopeProvider = { context.pluginScope },
             auth = context.authDataProvider,
-            storage = context.pluginStorageFactory?.createStorage(pluginId),
-            leaderboard = LeaderboardService(context.supabaseDataProvider, context.authDataProvider),
+            storage = storage,
+            leaderboard = LeaderboardService(
+                context.supabaseDataProvider,
+                context.authDataProvider,
+                storage,
+            ),
             splitView = context.splitViewOperations,
         )
         this.services = services
