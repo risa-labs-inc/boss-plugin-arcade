@@ -125,6 +125,9 @@ private fun BattleshipLobby(viewModel: BattleshipViewModel) {
             }
         }
 
+        Spacer(Modifier.height(18.dp))
+        NotifyToggle(viewModel)
+
         Spacer(Modifier.height(20.dp))
         Text("Standings", color = ArcadeColors.Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Spacer(Modifier.height(8.dp))
@@ -160,6 +163,63 @@ private fun BattleshipLobby(viewModel: BattleshipViewModel) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Opt-in for toasts. Lives here rather than in host settings because this is
+ * where someone is when they decide they care about their games, and because
+ * the plugin API has no preferences surface to put it in.
+ */
+@Composable
+private fun NotifyToggle(viewModel: BattleshipViewModel) {
+    val on = viewModel.notifyEnabled
+    Row(
+        modifier = Modifier
+            .widthIn(max = 460.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(ArcadeColors.Chip)
+            .border(1.dp, ArcadeColors.Frame, RoundedCornerShape(10.dp))
+            .plainClickable { viewModel.setNotifyPreference(!on) }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (on) ArcadeColors.Pink else ArcadeColors.Cell)
+                .border(
+                    1.dp,
+                    if (on) ArcadeColors.PinkDeep else ArcadeColors.Frame,
+                    RoundedCornerShape(6.dp),
+                )
+                .width(18.dp)
+                .height(18.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (on) {
+                Text("✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(
+                "Notify me when a game needs my move",
+                color = ArcadeColors.Ink,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                if (on) {
+                    "A toast at most once every 30 minutes. Off by default so the " +
+                        "Arcade never interrupts your work uninvited."
+                } else {
+                    "Off. You'll still see a count on the Arcade card whenever you look."
+                },
+                color = ArcadeColors.Muted,
+                fontSize = 11.sp,
+            )
         }
     }
 }

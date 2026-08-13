@@ -129,6 +129,14 @@ class ArcadeTabComponent(
     private fun typingSprint(): TypingSprintViewModel =
         typingSprint ?: TypingSprintViewModel(componentScope, services).also { typingSprint = it }
 
+    /** Toast/MCP entry point: surface the Battleship lobby on screen. */
+    override fun showBattleship(): BattleshipViewModel {
+        val vm = battleship()
+        screen = ArcadeScreen.Battleship
+        vm.refreshLobby()
+        return vm
+    }
+
     private fun battleship(): BattleshipViewModel =
         battleship ?: BattleshipViewModel(componentScope, services).also { battleship = it }
 

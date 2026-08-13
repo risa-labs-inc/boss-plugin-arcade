@@ -68,6 +68,14 @@ class BattleshipViewModel(
     var showOpponentPicker by mutableStateOf(false)
         private set
 
+    /**
+     * Whether this player wants to be told about waiting games. Off unless they
+     * say otherwise — see BattleshipNotifier for why a game does not get to
+     * interrupt someone's work uninvited.
+     */
+    var notifyEnabled by mutableStateOf(false)
+        private set
+
     // --- placement ---
     val placed = mutableStateListOf<BattleshipLogic.Ship>()
     var orientation by mutableStateOf(BattleshipLogic.Orientation.HORIZONTAL)
@@ -134,6 +142,12 @@ class BattleshipViewModel(
 
     init {
         refreshLobby()
+        scope.launch { notifyEnabled = BattleshipNotifier.isEnabled(services.storage) }
+    }
+
+    fun setNotifyPreference(enabled: Boolean) {
+        notifyEnabled = enabled
+        scope.launch { BattleshipNotifier.setEnabled(services.storage, enabled) }
     }
 
     fun dismissMessage() {

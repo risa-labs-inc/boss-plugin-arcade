@@ -61,6 +61,8 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   └── TypingSprintScreen.kt    # hidden-TextField input, per-char feedback
 ├── battleship/
 │   ├── BattleshipLogic.kt     # pure rules: fleet, placement, straight-run checks
+│   ├── BattleshipNotifier.kt  # plugin-level poll -> toast when a game awaits you
+│   ├── BattleshipTime.kt      # "5 min ago" wording for the async wait
 │   ├── BattleshipService.kt   # arcade_bs_* RPC client (no "read their fleet" call)
 │   ├── BattleshipViewModel.kt # lobby/placement/board phases, turn polling
 │   ├── BattleshipGrid.kt      # shared 10x10 board + fleet roster
@@ -110,6 +112,32 @@ readable only by their owner (RLS), fleet legality is re-validated in
 `arcade_bs_fire`. `BattleshipLogic` duplicates those rules purely so the
 placement UI can refuse an illegal fleet without a round trip; never treat it as
 the source of truth. See `supabase/arcade_battleship.sql`.
+
+`BattleshipNotifier` runs from `register()` on `pluginScope`, NOT from the tab —
+a challenge has to be announceable when no Arcade tab is open, which is exactly
+when it would otherwise go unseen. It polls `arcade_bs_my_matches` every 60s.
+
+**It is off by default and must stay that way.** BOSS is a work tool and a
+Battleship turn has no urgency — turns are hours apart by design, and the Arcade
+card's badge carries the same information for free. The plugin API offers no
+ambient surface outside the tab (no tray, no badge, no dashboard slot;
+`SettingsProvider` only *opens* the settings dialog), so the only channel that
+reaches an unattended player is an interrupt — which is a reason to require
+consent, not a licence to use it. The opt-in lives in the Battleship lobby and is
+read every poll, so toggling takes effect without a restart.
+
+Three layers keep even an opted-in player from being spammed: each announcement
+is keyed on the match's `updated_at` and persisted, so a state is announced once
+and a restart does not replay old news; `QUIET_GAP_MS` floors the interval
+between toasts at 30 min; and backlogs above two collapse into one summary.
+Note the ordering in `checkOnce` — a match is only marked "told" after a toast
+actually shows, or news suppressed by the quiet gap would be swallowed for good.
+
+`NotificationProvider` is an in-app toast only, so a challenge sent while BOSS is
+closed is seen at next launch, not at send time.
+
+Outgoing unanswered challenges are capped at 3 server-side. One player opened
+nine in 90 seconds, which is how most games ended up idle.
 
 ## Adding a new game (checklist)
 

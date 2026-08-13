@@ -188,6 +188,16 @@ begin
   ) then
     raise exception 'you already have a game running with that player';
   end if;
+  -- And a cap on unanswered challenges you have out. One player opened nine in
+  -- 90 seconds, which is how most games ended up idle: spraying challenges is
+  -- not the same as having opponents.
+  if (
+    select count(*) from public.arcade_matches
+    where player_a = me and status = 'pending'
+  ) >= 3 then
+    raise exception
+      'you already have 3 challenges waiting for an answer — play those first';
+  end if;
 
   insert into public.arcade_matches (player_a, player_b, status)
   values (me, p_opponent, 'pending')

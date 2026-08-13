@@ -5,10 +5,13 @@ import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
 import ai.rever.boss.plugin.api.SplitViewOperations
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 
 const val ARCADE_PLUGIN_ID = "ai.rever.boss.plugin.dynamic.arcade"
 
@@ -20,6 +23,8 @@ interface ArcadeGameHost {
     fun showGame2048(): Game2048ViewModel
 
     fun showWordle(): WordleViewModel
+
+    fun showBattleship(): BattleshipViewModel
 }
 
 /**
@@ -69,6 +74,7 @@ object ArcadeDynamicPlugin : DynamicPlugin {
     override val url = "https://github.com/risa-labs-inc/boss-plugin-arcade"
 
     private var services: ArcadeServices? = null
+    private var notifierJob: Job? = null
 
     override fun register(context: PluginContext) {
         val storage = context.pluginStorageFactory?.createStorage(pluginId)
@@ -94,9 +100,37 @@ object ArcadeDynamicPlugin : DynamicPlugin {
         }
 
         context.registerMcpToolProvider(ArcadeMcpTools(pluginId, services))
+
+        // Watch for Battleship games waiting on this player. Deliberately here
+        // and not in the tab: this has to work when no Arcade tab is open, which
+        // is precisely when a challenge would otherwise go unnoticed.
+        //
+        // Cancel any previous watcher first — if register() ever runs twice
+        // (a reload, a second window) two loops would double every toast.
+        notifierJob?.cancel()
+        notifierJob = BattleshipNotifier(
+            service = services.battleship,
+            notifications = context.notificationProvider,
+            storage = storage,
+            openBattleship = {
+                runCatching {
+                    val host = services.activeArcadeTab
+                    if (host != null) {
+                        host.showBattleship()
+                    } else {
+                        // No Arcade tab open: make one. The tab registers itself
+                        // as activeArcadeTab, and its own home screen loads the
+                        // lobby, so the player lands somewhere useful either way.
+                        services.splitView?.openTab(ArcadeTabInfo())
+                    }
+                }
+            },
+        ).start(services.pluginScope)
     }
 
     override fun dispose() {
+        notifierJob?.cancel()
+        notifierJob = null
         services = null
     }
 }

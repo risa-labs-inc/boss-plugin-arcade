@@ -210,7 +210,7 @@ class LeaderboardServiceTest {
     }
 }
 
-private class FakeSupabase(
+internal class FakeSupabase(
     private val handler: (String, String) -> Result<String>,
 ) : SupabaseDataProvider {
     val calls = mutableListOf<Pair<String, String>>()
@@ -228,7 +228,7 @@ private class FakeSupabase(
     ): Result<String> = Result.success("[]")
 }
 
-private class FakeAuth(userId: String?) : AuthDataProvider {
+internal class FakeAuth(userId: String?) : AuthDataProvider {
     override val currentUser: StateFlow<UserData?> = MutableStateFlow(
         userId?.let {
             UserData(
@@ -247,7 +247,7 @@ private class FakeAuth(userId: String?) : AuthDataProvider {
     override fun hasAnyPermission(vararg permissions: String): Boolean = false
 }
 
-private class FakeStorage(
+internal class FakeStorage(
     val raw: MutableMap<String, String> = mutableMapOf(),
 ) : PluginStorageProvider {
     override fun getPluginId(): String = ARCADE_PLUGIN_ID

@@ -31,7 +31,14 @@ original single-file HTML versions.
     Your fleet is only ever readable by you: placements live behind row-level
     security and every shot is resolved on the server, so the opponent's board
     genuinely cannot be read from the client. Battleship keeps win/loss
-    standings rather than a high-score leaderboard.
+    standings rather than a high-score leaderboard. You can have at most three
+    unanswered challenges out at once — spraying challenges is not the same as
+    having opponents. Notifications are **off by default**: a Battleship turn is
+    never urgent, so the Arcade does not interrupt your work uninvited, and the
+    count on the Arcade card tells you what's waiting whenever you next look.
+    Turn them on from the Battleship lobby and you'll get a toast — at most one
+    every 30 minutes, with a button straight to the board. Toasts are in-app, so
+    a challenge sent while BOSS is closed shows up at your next launch.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in
