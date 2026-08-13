@@ -92,7 +92,18 @@ private fun BattleshipLobby(viewModel: BattleshipViewModel) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ArcadePrimaryButton("Challenge someone", onClick = { viewModel.openOpponentPicker() })
             Spacer(Modifier.width(8.dp))
-            ArcadeGhostButton("Refresh", onClick = { viewModel.refreshLobby() })
+            ArcadeGhostButton(
+                if (viewModel.refreshing) "Refreshing…" else "Refresh",
+                onClick = { viewModel.refreshLobby() },
+                enabled = !viewModel.refreshing,
+            )
+            // The stamp carries seconds on purpose: an unchanged list is the
+            // common case, and without a value that visibly moves the button
+            // gives no evidence it did anything.
+            viewModel.lobbyCheckedAt?.let { stamp ->
+                Spacer(Modifier.width(10.dp))
+                Text("Checked $stamp", color = ArcadeColors.Muted, fontSize = 11.sp)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -114,10 +125,21 @@ private fun BattleshipLobby(viewModel: BattleshipViewModel) {
             }
         }
 
-        if (viewModel.standings.isNotEmpty()) {
-            Spacer(Modifier.height(20.dp))
-            Text("Standings", color = ArcadeColors.Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(20.dp))
+        Text("Standings", color = ArcadeColors.Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Spacer(Modifier.height(8.dp))
+        if (viewModel.standings.isEmpty()) {
+            // Always render the heading with a reason. Hiding the whole section
+            // when nothing has finished yet is indistinguishable from it being
+            // broken, which is exactly how it was first reported.
+            Text(
+                "Nothing here until a game finishes — standings count won matches, " +
+                    "not shots fired.",
+                color = ArcadeColors.Muted,
+                fontSize = 12.sp,
+                modifier = Modifier.widthIn(max = 460.dp),
+            )
+        } else {
             for ((index, row) in viewModel.standings.withIndex()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp).padding(vertical = 3.dp),
@@ -176,7 +198,11 @@ private fun MatchRow(match: MatchSummary, viewModel: BattleshipViewModel) {
                     fontSize = 14.sp,
                 )
                 Text(
-                    statusText,
+                    // Append staleness: "waiting for them to accept" reads very
+                    // differently at two minutes and at two days.
+                    relativeTime(match.updatedAt)
+                        ?.let { "$statusText · $it" }
+                        ?: statusText,
                     color = if (highlight) ArcadeColors.PinkDeep else ArcadeColors.Muted,
                     fontSize = 12.sp,
                 )
@@ -251,12 +277,16 @@ private fun BattleshipPlacement(viewModel: BattleshipViewModel) {
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
         )
-        val next = viewModel.nextShip
+        val next = viewModel.activeShip
         Text(
+            // The repositioning hint stays up even once the fleet is complete —
+            // that is exactly the moment you want to nudge a ship, and hiding it
+            // behind "Fleet ready." made moving one look impossible.
             if (next != null) {
-                "Click to place your ${next.label} (${next.length}). Click a placed ship to remove it."
+                "Click the board to place your ${next.label} (${next.length}). " +
+                    "Tap any ship below — or on the board — to move it."
             } else {
-                "Fleet ready."
+                "Fleet ready. Tap any ship below, or on the board, to move it."
             },
             color = ArcadeColors.Muted,
             fontSize = 12.sp,
@@ -278,6 +308,13 @@ private fun BattleshipPlacement(viewModel: BattleshipViewModel) {
             ArcadeGhostButton("Clear", onClick = { viewModel.clearFleet() })
         }
 
+        Spacer(Modifier.height(10.dp))
+        PlacementRoster(
+            placedIds = viewModel.placedTypes,
+            activeShip = viewModel.activeShip,
+            onSelect = { viewModel.selectShip(it) },
+        )
+
         Spacer(Modifier.height(12.dp))
         BattleshipGrid(
             markAt = { cell ->
@@ -287,13 +324,13 @@ private fun BattleshipPlacement(viewModel: BattleshipViewModel) {
                 }
             },
             onCellClick = { cell ->
-                if (viewModel.placed.any { cell in it.cells }) viewModel.clearAt(cell)
+                val onBoard = viewModel.placed.firstOrNull { cell in it.cells }
+                // Tapping a placed ship selects it for re-placement rather than
+                // just deleting it, so the next board click puts it back down.
+                if (onBoard != null) viewModel.selectShip(onBoard.type)
                 else viewModel.placeAt(cell)
             },
         )
-
-        Spacer(Modifier.height(12.dp))
-        FleetRoster(sunkIds = viewModel.placed.map { it.type.id }.toSet())
 
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -342,7 +379,42 @@ private fun BattleshipBoard(viewModel: BattleshipViewModel) {
                 fontSize = 15.sp,
             )
             Spacer(Modifier.width(10.dp))
-            ArcadeGhostButton("Refresh", onClick = { viewModel.refreshBoard() })
+            ArcadeGhostButton(
+                if (viewModel.refreshing) "Refreshing…" else "Refresh",
+                onClick = { viewModel.refreshBoard() },
+                enabled = !viewModel.refreshing,
+            )
+        }
+
+        // Waiting is the normal state of an async game, so the screen has to
+        // distinguish "nothing has happened yet" from "the refresh is broken".
+        if (!detail.finished) {
+            Spacer(Modifier.height(4.dp))
+            val lastMove = relativeTime(detail.theirLastShotAt)
+            val lastSeen = relativeTime(detail.opponentLastSeen)
+            val waitingSince = relativeTime(detail.updatedAt)
+            val activity = buildList {
+                if (lastMove != null) {
+                    add("Their last shot $lastMove")
+                } else if (!detail.myTurn && waitingSince != null) {
+                    add("No shots yet — their move since $waitingSince")
+                }
+                if (lastSeen != null) add("last in the Arcade $lastSeen")
+            }
+            if (activity.isNotEmpty()) {
+                Text(
+                    activity.joinToString(" · "),
+                    color = ArcadeColors.Muted,
+                    fontSize = 11.sp,
+                )
+            }
+            viewModel.boardCheckedAt?.let { stamp ->
+                Text(
+                    "Checked $stamp · re-checks itself every 10s while it's their move",
+                    color = ArcadeColors.Muted,
+                    fontSize = 11.sp,
+                )
+            }
         }
 
         viewModel.lastOutcome?.let { outcome ->

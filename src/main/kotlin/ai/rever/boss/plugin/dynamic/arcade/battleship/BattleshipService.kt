@@ -51,6 +51,10 @@ data class MatchDetail(
     @SerialName("my_fleet") val myFleet: List<FleetEntry> = emptyList(),
     @SerialName("my_shots") val myShots: List<ShotRecord> = emptyList(),
     @SerialName("their_shots") val theirShots: List<ShotRecord> = emptyList(),
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("their_last_shot_at") val theirLastShotAt: String? = null,
+    /** Last time the opponent did anything in the Arcade — "are they around?". */
+    @SerialName("opponent_last_seen") val opponentLastSeen: String? = null,
 )
 
 @Serializable

@@ -438,7 +438,21 @@ begin
       select jsonb_agg(jsonb_build_object('cell', s.cell, 'result', s.result) order by s.created_at)
       from public.arcade_battleship_shots s
       where s.match_id = p_match and s.shooter_id = foe
-    ), '[]'::jsonb)
+    ), '[]'::jsonb),
+    -- Activity, so "waiting on them" can say HOW LONG and whether they are even
+    -- at their desk. Without this the board is indistinguishable from a broken
+    -- refresh: nothing changes and there is no way to tell that is the truth.
+    'updated_at', m.updated_at,
+    'their_last_shot_at', (
+      select max(s.created_at) from public.arcade_battleship_shots s
+      where s.match_id = p_match and s.shooter_id = foe
+    ),
+    -- Last time the opponent did anything anywhere in the Arcade. Scoped to
+    -- Arcade activity on purpose — it answers "are they around?" without
+    -- turning into general presence tracking.
+    'opponent_last_seen', (
+      select max(sc.created_at) from public.arcade_scores sc where sc.user_id = foe
+    )
   );
 end;
 $$;

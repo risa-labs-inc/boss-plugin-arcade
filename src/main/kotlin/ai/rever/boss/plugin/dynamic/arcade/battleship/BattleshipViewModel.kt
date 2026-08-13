@@ -47,6 +47,20 @@ class BattleshipViewModel(
     var message by mutableStateOf<String?>(null)
         private set
 
+    /**
+     * Wall-clock stamp of the last completed load, seconds included. The seconds
+     * matter: without them two refreshes inside the same minute render
+     * identically and the button looks dead.
+     */
+    var lobbyCheckedAt by mutableStateOf<String?>(null)
+        private set
+    var boardCheckedAt by mutableStateOf<String?>(null)
+        private set
+
+    /** True only while a refresh the user asked for is in flight. */
+    var refreshing by mutableStateOf(false)
+        private set
+
     // --- lobby ---
     val matches = mutableStateListOf<MatchSummary>()
     val opponents = mutableStateListOf<BattleshipPlayer>()
@@ -60,9 +74,36 @@ class BattleshipViewModel(
         private set
     private var intent: PlacementIntent? = null
 
-    /** The next ship still needing a home, or null once the fleet is complete. */
-    val nextShip: BattleshipLogic.ShipType?
-        get() = BattleshipLogic.FLEET.firstOrNull { type -> placed.none { it.type == type } }
+    /**
+     * The ship the player explicitly picked to place. Null means "just work down
+     * the fleet", which is what you want on a fresh board.
+     */
+    var selectedShip by mutableStateOf<BattleshipLogic.ShipType?>(null)
+        private set
+
+    private fun isPlaced(type: BattleshipLogic.ShipType) = placed.any { it.type == type }
+
+    /**
+     * The ship a board click will place. An explicit selection wins, but only
+     * while it is actually off the board — otherwise placing it would silently
+     * do nothing and the click would look broken.
+     */
+    val activeShip: BattleshipLogic.ShipType?
+        get() = selectedShip?.takeIf { !isPlaced(it) }
+            ?: BattleshipLogic.FLEET.firstOrNull { !isPlaced(it) }
+
+    /**
+     * Pick a ship to place. Choosing one already on the board lifts it off so it
+     * can be moved — repositioning without clearing the whole fleet is the
+     * whole point.
+     */
+    fun selectShip(type: BattleshipLogic.ShipType) {
+        placed.removeAll { it.type == type }
+        selectedShip = type
+    }
+
+    val placedTypes: Set<String>
+        get() = placed.map { it.type.id }.toSet()
 
     val placementComplete: Boolean
         get() = BattleshipLogic.isCompleteFleet(placed.toList())
@@ -108,10 +149,13 @@ class BattleshipViewModel(
         }
         scope.launch {
             busy = true
+            refreshing = true
             service.myMatches()
                 .onSuccess { matches.replaceWith(it) }
                 .onFailure { message = it.friendly() }
             service.standings().onSuccess { standings.replaceWith(it) }
+            lobbyCheckedAt = clockStamp()
+            refreshing = false
             busy = false
         }
     }
@@ -151,6 +195,7 @@ class BattleshipViewModel(
     private fun beginPlacement(next: PlacementIntent) {
         intent = next
         placed.clear()
+        selectedShip = null
         orientation = BattleshipLogic.Orientation.HORIZONTAL
         message = null
         phase = Phase.PLACING
@@ -166,12 +211,12 @@ class BattleshipViewModel(
 
     /** True when the ship currently being placed would fit starting at [cell]. */
     fun canPlaceAt(cell: Int): Boolean {
-        val type = nextShip ?: return false
+        val type = activeShip ?: return false
         return BattleshipLogic.canPlace(type, cell, orientation, occupied)
     }
 
     fun placeAt(cell: Int) {
-        val type = nextShip ?: return
+        val type = activeShip ?: return
         val cells = BattleshipLogic.span(type, cell, orientation)
         if (cells == null || cells.any { it in occupied }) {
             message = "${type.label} doesn't fit there"
@@ -187,10 +232,12 @@ class BattleshipViewModel(
 
     fun randomizeFleet() {
         placed.replaceWith(BattleshipLogic.randomFleet())
+        selectedShip = null
     }
 
     fun clearFleet() {
         placed.clear()
+        selectedShip = null
     }
 
     fun cancelPlacement() {
@@ -254,15 +301,18 @@ class BattleshipViewModel(
         refreshLobby()
     }
 
-    fun refreshBoard() = loadDetail()
+    fun refreshBoard() = loadDetail(userInitiated = true)
 
-    private fun loadDetail() {
+    private fun loadDetail(userInitiated: Boolean = false) {
         val matchId = openMatchId ?: return
         scope.launch {
             busy = true
+            if (userInitiated) refreshing = true
             service.matchDetail(matchId)
                 .onSuccess { detail = it }
                 .onFailure { message = it.friendly() }
+            boardCheckedAt = clockStamp()
+            refreshing = false
             busy = false
         }
     }
@@ -279,7 +329,10 @@ class BattleshipViewModel(
                 val current = detail
                 if (current == null || current.finished || current.myTurn) continue
                 val matchId = openMatchId ?: break
-                service.matchDetail(matchId).onSuccess { detail = it }
+                service.matchDetail(matchId).onSuccess {
+                    detail = it
+                    boardCheckedAt = clockStamp()
+                }
             }
         }
     }
@@ -309,6 +362,9 @@ class BattleshipViewModel(
         pollJob = null
     }
 }
+
+private fun clockStamp(): String =
+    java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))
 
 /** Postgres surfaces RPC errors with noisy prefixes; show the human part. */
 private fun Throwable.friendly(): String {

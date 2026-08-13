@@ -143,3 +143,50 @@ fun FleetRoster(sunkIds: Set<String>, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/**
+ * The placement roster: tap a ship to place it, or tap one already on the board
+ * to lift it off and put it somewhere else. This is the affordance that makes
+ * repositioning findable — without it the only way to move a ship is to guess
+ * that clicking it on the board removes it.
+ */
+@Composable
+fun PlacementRoster(
+    placedIds: Set<String>,
+    activeShip: BattleshipLogic.ShipType?,
+    onSelect: (BattleshipLogic.ShipType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (type in BattleshipLogic.FLEET) {
+            val isPlaced = type.id in placedIds
+            val isActive = type == activeShip
+            val fill = when {
+                isActive -> ArcadeColors.Pink
+                isPlaced -> ArcadeColors.InkSoft
+                else -> ArcadeColors.Chip
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(fill)
+                    .border(
+                        if (isActive) 2.dp else 1.dp,
+                        if (isActive) ArcadeColors.PinkDeep else ArcadeColors.Frame,
+                        RoundedCornerShape(8.dp),
+                    )
+                    .plainClickable { onSelect(type) }
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+            ) {
+                Text(
+                    // A placed ship gets a tick so the roster doubles as the
+                    // "what is left to place" checklist.
+                    (if (isPlaced) "✓ " else "") + "${type.label} ${type.length}",
+                    color = if (isActive || isPlaced) Color.White else ArcadeColors.InkSoft,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
