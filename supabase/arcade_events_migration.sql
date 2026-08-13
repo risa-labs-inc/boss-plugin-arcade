@@ -138,6 +138,23 @@ from public.arcade_scores
 where event <> 'legacy'
 group by 1, 2;
 
+-- All-time per-game picture, honest about what is countable. Excludes 'legacy'
+-- (pre-migration rows and pre-0.1.15 clients, which cannot be classified) and
+-- the 'arcade' pseudo-game used for tab opens.
+create or replace view public.arcade_overview
+with (security_invoker = true) as
+select
+  game,
+  count(*) filter (where event = 'start')                          as runs,
+  count(distinct user_id) filter (where event = 'start')           as players,
+  max(score) filter (where event in ('progress', 'final'))         as top_score,
+  min(created_at) filter (where event = 'start')                   as first_run,
+  max(created_at)                                                  as last_activity
+from public.arcade_scores
+where event <> 'legacy'
+  and game <> 'arcade'
+group by game;
+
 revoke all on function public.arcade_leaderboard(text, integer, timestamptz) from public;
 grant execute on function public.arcade_leaderboard(text, integer, timestamptz) to authenticated;
 revoke all on function public.arcade_submit_score(text, integer, text) from public;
@@ -145,3 +162,4 @@ grant execute on function public.arcade_submit_score(text, integer, text) to aut
 revoke all on function public.arcade_personal_best(text) from public;
 grant execute on function public.arcade_personal_best(text) to authenticated;
 grant select on public.arcade_usage_daily to authenticated;
+grant select on public.arcade_overview to authenticated;
