@@ -59,6 +59,12 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── TypingPassages.kt        # passage pool
 │   ├── TypingSprintViewModel.kt # 60s clock, WPM x accuracy scoring, submits
 │   └── TypingSprintScreen.kt    # hidden-TextField input, per-char feedback
+├── battleship/
+│   ├── BattleshipLogic.kt     # pure rules: fleet, placement, straight-run checks
+│   ├── BattleshipService.kt   # arcade_bs_* RPC client (no "read their fleet" call)
+│   ├── BattleshipViewModel.kt # lobby/placement/board phases, turn polling
+│   ├── BattleshipGrid.kt      # shared 10x10 board + fleet roster
+│   └── BattleshipScreen.kt    # lobby, opponent picker, placement, play board
 └── wordle/
     ├── WordleWords.kt        # embedded answer + guess dictionaries, daily pick
     ├── WordleLogic.kt        # pure rules: evaluation, key hints, points
@@ -86,13 +92,24 @@ Key patterns:
   (run began), `progress` (mid-run best sync), `final` (run ended). **A row is
   not a run: count `event = 'start'`,** or just read the `arcade_usage_daily`
   view. `final` can fire twice for one 2048 run (win, then game over), and
-  `progress` fires every 2s while a 2048 run is live. Rows written before this
-  model landed are marked `legacy` and cannot be classified — exclude them.
+  `progress` fires every 2s while a 2048 run is live. `legacy` means "nobody
+  said what this row was" — either written before this model landed, or by a
+  pre-0.1.15 client whose 2-arg RPC call takes the default. Legacy rows count
+  for the leaderboard and never as runs; do not try to classify them.
   Only `final` scores take the durable replay path; losing an `open`/`start`
   costs one telemetry point and is not worth a storage write per event.
 - Wordle's shared daily word is client-derived (hash of the UTC epoch day over
   the embedded answer list) — no server, so every machine agrees; the day's
   guesses persist to plugin storage per user so a board can't be replayed.
+
+Battleship is the odd one out: async head-to-head rather than a scored run, so
+it has no leaderboard entry and its own `arcade_bs_standings` (W/L) instead.
+**The server is the authority and the client is assumed hostile** — fleets are
+readable only by their owner (RLS), fleet legality is re-validated in
+`arcade_bs_validate_fleet` on every submit, and hit/miss is resolved inside
+`arcade_bs_fire`. `BattleshipLogic` duplicates those rules purely so the
+placement UI can refuse an illegal fleet without a round trip; never treat it as
+the source of truth. See `supabase/arcade_battleship.sql`.
 
 ## Adding a new game (checklist)
 

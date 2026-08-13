@@ -21,8 +21,9 @@ create table if not exists public.arcade_scores (
   -- start    - a run began                  (score 0)
   -- progress - mid-run personal-best sync   (score > 0)
   -- final    - a run ended                  (score >= 0; 0 = scoreless loss)
-  -- legacy   - pre-migration, unclassifiable; excluded from run counts
-  event text not null default 'final'
+  -- legacy   - pre-migration OR written by a client that did not say;
+  --            unclassifiable, excluded from run counts
+  event text not null default 'legacy'
     check (event in ('legacy', 'open', 'start', 'progress', 'final')),
   created_at timestamptz not null default now()
 );
@@ -46,12 +47,13 @@ create policy arcade_scores_read_all on public.arcade_scores
   for select to authenticated
   using (true);
 
--- Record one telemetry event for the calling user. p_event defaults to 'final'
--- so a two-argument call from an older client still records a finished run.
+-- Record one telemetry event for the calling user. p_event defaults to 'legacy'
+-- so a two-argument call from an older client is counted for the leaderboard
+-- but never mistaken for a finished run.
 create or replace function public.arcade_submit_score(
   p_game text,
   p_score integer,
-  p_event text default 'final'
+  p_event text default 'legacy'
 )
 returns void
 language sql
@@ -62,9 +64,14 @@ as $$
     auth.uid(),
     p_game,
     greatest(coalesce(p_score, 0), 0),
-    -- Unknown/absent event degrades to 'final' rather than failing the insert:
-    -- never lose a score to a telemetry-labelling mistake.
-    case when p_event in ('open', 'start', 'progress', 'final') then p_event else 'final' end
+    -- A client that does not say what this row is gets 'legacy', not 'final'.
+    -- Pre-0.1.15 clients call with two args and would otherwise label their
+    -- every-2s 2048 sync a finished run. 'legacy' still counts for the
+    -- leaderboard, it just never counts as a run.
+    case
+      when p_event in ('open', 'start', 'progress', 'final', 'legacy') then p_event
+      else 'legacy'
+    end
   );
 $$;
 

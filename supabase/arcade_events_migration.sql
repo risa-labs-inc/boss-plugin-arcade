@@ -11,17 +11,21 @@
 --   start    - a run began                       (score 0)
 --   progress - mid-run personal-best sync        (score > 0)
 --   final    - a run ended                       (score >= 0; 0 = scoreless loss)
---   legacy   - written before this migration; NOT classifiable, exclude from
---              run counts. Distinct-player and daily-active counts over legacy
---              rows are still sound.
+--   legacy   - written before this migration, OR by a client that did not say
+--              which event it was. NOT classifiable, exclude from run counts.
+--              Distinct-player and daily-active counts over legacy rows are
+--              still sound.
 --
 -- Safe to apply while old clients are still deployed: they call
--- arcade_submit_score with two named args and PostgREST fills p_event from its
--- default, so their rows land as 'final'.
+-- arcade_submit_score with two named args, PostgREST fills p_event from its
+-- default, and their rows land as 'legacy' — counted for the leaderboard,
+-- never counted as runs. That matters: a pre-0.1.15 client syncs a 2048 best
+-- every 2s, so labelling those 'final' would re-create the very overcount this
+-- migration exists to remove.
 
 alter table public.arcade_scores add column if not exists event text;
 update public.arcade_scores set event = 'legacy' where event is null;
-alter table public.arcade_scores alter column event set default 'final';
+alter table public.arcade_scores alter column event set default 'legacy';
 alter table public.arcade_scores alter column event set not null;
 
 alter table public.arcade_scores drop constraint if exists arcade_scores_event_check;
@@ -42,7 +46,7 @@ drop function if exists public.arcade_submit_score(text, integer);
 create or replace function public.arcade_submit_score(
   p_game text,
   p_score integer,
-  p_event text default 'final'
+  p_event text default 'legacy'
 )
 returns void
 language sql
@@ -53,9 +57,14 @@ as $$
     auth.uid(),
     p_game,
     greatest(coalesce(p_score, 0), 0),
-    -- Unknown/absent event degrades to 'final' rather than failing the insert:
-    -- never lose a score to a telemetry-labelling mistake.
-    case when p_event in ('open', 'start', 'progress', 'final') then p_event else 'final' end
+    -- A client that does not say what this row is gets 'legacy', not 'final'.
+    -- Pre-0.1.15 clients call with two args and would otherwise label their
+    -- every-2s 2048 sync a finished run. 'legacy' still counts for the
+    -- leaderboard, it just never counts as a run.
+    case
+      when p_event in ('open', 'start', 'progress', 'final', 'legacy') then p_event
+      else 'legacy'
+    end
   );
 $$;
 

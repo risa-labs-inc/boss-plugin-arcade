@@ -5,6 +5,7 @@ import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
 import ai.rever.boss.plugin.api.SplitViewOperations
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ class ArcadeServices(
     val auth: AuthDataProvider?,
     val storage: PluginStorageProvider?,
     val leaderboard: LeaderboardService,
+    val battleship: BattleshipService,
     val splitView: SplitViewOperations?,
 ) {
     /**
@@ -78,6 +80,10 @@ object ArcadeDynamicPlugin : DynamicPlugin {
                 context.supabaseDataProvider,
                 context.authDataProvider,
                 storage,
+            ),
+            battleship = BattleshipService(
+                context.supabaseDataProvider,
+                context.authDataProvider,
             ),
             splitView = context.splitViewOperations,
         )

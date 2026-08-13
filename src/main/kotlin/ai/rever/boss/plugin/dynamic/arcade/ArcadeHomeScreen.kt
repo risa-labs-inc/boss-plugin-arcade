@@ -36,6 +36,8 @@ fun ArcadeHomeScreen(
     onPlaySkyStack: () -> Unit,
     onPlayTypingSprint: () -> Unit,
     onPlayWordle: () -> Unit,
+    onPlayBattleship: () -> Unit,
+    battleshipWaiting: Int = 0,
 ) {
     Column(
         modifier = Modifier
@@ -90,6 +92,18 @@ fun ArcadeHomeScreen(
                 subtitle = "One shared word a day",
                 badge = { TileBadge("W", Color(0xFF6AAA64)) },
                 onClick = onPlayWordle,
+            )
+            GameCard(
+                // The badge counts games waiting on you: the whole point of an
+                // async game is knowing there is a move to make without opening it.
+                title = "Battleship",
+                subtitle = if (battleshipWaiting > 0) {
+                    "$battleshipWaiting waiting on you"
+                } else {
+                    "Head to head, one shot at a time"
+                },
+                badge = { TileBadge(if (battleshipWaiting > 0) "$battleshipWaiting" else "⚓", Color(0xFF3E7CB1)) },
+                onClick = onPlayBattleship,
             )
         }
         ArcadeHomeInsights(leaderboard)

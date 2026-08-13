@@ -24,6 +24,14 @@ original single-file HTML versions.
     involved), one board per day, and solving in fewer guesses scores more
     points (7 − guesses). Guesses persist locally, so closing the tab never
     grants a retry, and the result card copies the classic emoji share grid.
+  - **Battleship** — async head-to-head against a teammate. Challenge someone
+    and place your fleet; they accept, place theirs, and you alternate one shot
+    at a time whenever each of you gets a minute — no need to be online
+    together. The Arcade card badges how many games are waiting on your move.
+    Your fleet is only ever readable by you: placements live behind row-level
+    security and every shot is resolved on the server, so the opponent's board
+    genuinely cannot be read from the client. Battleship keeps win/loss
+    standings rather than a high-score leaderboard.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in

@@ -6,6 +6,8 @@ import ai.rever.boss.plugin.api.TabComponentWithUI
 import ai.rever.boss.plugin.api.TabInfo
 import ai.rever.boss.plugin.api.TabTypeId
 import ai.rever.boss.plugin.api.TabTypeInfo
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipScreen
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048Screen
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashScreen
@@ -74,6 +76,7 @@ class ArcadeTabComponent(
     private var skyStack: SkyStackViewModel? = null
     private var typingSprint: TypingSprintViewModel? = null
     private var wordle: WordleViewModel? = null
+    private var battleship: BattleshipViewModel? = null
 
     init {
         services.activeArcadeTab = this
@@ -89,6 +92,7 @@ class ArcadeTabComponent(
             skyStack?.onDisposed()
             typingSprint?.onDisposed()
             wordle?.onDisposed()
+            battleship?.onDisposed()
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
             if (services.activeWordle === wordle) services.activeWordle = null
             if (services.activeArcadeTab === this) services.activeArcadeTab = null
@@ -125,6 +129,9 @@ class ArcadeTabComponent(
     private fun typingSprint(): TypingSprintViewModel =
         typingSprint ?: TypingSprintViewModel(componentScope, services).also { typingSprint = it }
 
+    private fun battleship(): BattleshipViewModel =
+        battleship ?: BattleshipViewModel(componentScope, services).also { battleship = it }
+
     private fun wordle(): WordleViewModel =
         wordle ?: WordleViewModel(componentScope, services).also {
             wordle = it
@@ -142,6 +149,11 @@ class ArcadeTabComponent(
                     onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
                     onPlayTypingSprint = { screen = ArcadeScreen.TypingSprint },
                     onPlayWordle = { screen = ArcadeScreen.Wordle },
+                    onPlayBattleship = { screen = ArcadeScreen.Battleship },
+                    // Created here rather than on first play: the badge is the
+                    // point, and a lazily-created VM would read 0 until you had
+                    // already opened the game you were meant to be nudged into.
+                    battleshipWaiting = battleship().actionableCount,
                 )
                 ArcadeScreen.Game2048 -> Game2048Screen(
                     viewModel = game2048(),
@@ -174,9 +186,13 @@ class ArcadeTabComponent(
                     leaderboard = services.leaderboard,
                     onBack = { screen = ArcadeScreen.Home },
                 )
+                ArcadeScreen.Battleship -> BattleshipScreen(
+                    viewModel = battleship(),
+                    onBack = { screen = ArcadeScreen.Home },
+                )
             }
         }
     }
 }
 
-enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint, Wordle }
+enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint, Wordle, Battleship }
