@@ -65,6 +65,7 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── BattleshipTime.kt      # "5 min ago" wording for the async wait
 │   ├── BattleshipService.kt   # arcade_bs_* RPC client (no "read their fleet" call)
 │   ├── BattleshipViewModel.kt # lobby/placement/board phases, turn polling
+│   ├── BattleshipSoundPlayer.kt # synthesized shot sounds (hit/miss/sunk, both sides)
 │   ├── BattleshipGrid.kt      # shared 10x10 board + fleet roster
 │   └── BattleshipScreen.kt    # lobby, opponent picker, placement, play board
 └── wordle/

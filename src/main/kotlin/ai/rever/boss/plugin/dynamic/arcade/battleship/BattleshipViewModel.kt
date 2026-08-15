@@ -133,6 +133,7 @@ class BattleshipViewModel(
         private set
     private var openMatchId: String? = null
     private var pollJob: Job? = null
+    private val sounds = BattleshipSoundPlayer(scope)
 
     val service: BattleshipService get() = services.battleship
 
@@ -323,12 +324,28 @@ class BattleshipViewModel(
             busy = true
             if (userInitiated) refreshing = true
             service.matchDetail(matchId)
-                .onSuccess { detail = it }
+                .onSuccess { applyDetail(it) }
                 .onFailure { message = it.friendly() }
             boardCheckedAt = clockStamp()
             refreshing = false
             busy = false
         }
+    }
+
+    /**
+     * Swap in fresh server state, sounding any opponent shot that landed since
+     * the last look at this match. Turn order means at most one new shot can
+     * appear between loads, and a just-opened board (previous == null) stays
+     * silent instead of replaying history.
+     */
+    private fun applyDetail(fresh: MatchDetail) {
+        val previous = detail
+        if (previous != null && previous.matchId == fresh.matchId) {
+            fresh.theirShots.drop(previous.theirShots.size).forEach {
+                sounds.outcome(it.result, incoming = true)
+            }
+        }
+        detail = fresh
     }
 
     /**
@@ -344,7 +361,7 @@ class BattleshipViewModel(
                 if (current == null || current.finished || current.myTurn) continue
                 val matchId = openMatchId ?: break
                 service.matchDetail(matchId).onSuccess {
-                    detail = it
+                    applyDetail(it)
                     boardCheckedAt = clockStamp()
                 }
             }
@@ -364,6 +381,7 @@ class BattleshipViewModel(
             service.fire(matchId, cell)
                 .onSuccess {
                     lastOutcome = it
+                    sounds.outcome(it.result)
                     loadDetail()
                 }
                 .onFailure { message = it.friendly() }
