@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
+import ai.rever.boss.plugin.dynamic.arcade.battleship.Standing
 import java.time.Duration
 import java.time.OffsetDateTime
 
@@ -39,8 +41,12 @@ private data class GameBoard(val title: String, val entries: List<LeaderboardEnt
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
+fun ArcadeHomeInsights(
+    leaderboard: LeaderboardService,
+    battleship: BattleshipService,
+) {
     var boards by remember { mutableStateOf<List<GameBoard>?>(null) }
+    var standings by remember { mutableStateOf<List<Standing>>(emptyList()) }
     var weekly by remember { mutableStateOf(false) }
 
     LaunchedEffect(weekly) {
@@ -58,8 +64,17 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
         }
     }
 
+    // Battleship keeps win/loss standings, not scores, so it never shows up in
+    // arcade_scores — fetch its own ladder. All-time only: matches have no
+    // weekly window.
+    LaunchedEffect(Unit) {
+        if (battleship.isAvailable && battleship.isSignedIn) {
+            standings = battleship.standings(15).getOrNull().orEmpty()
+        }
+    }
+
     val loaded = boards ?: return
-    if (!weekly && loaded.all { it.entries.isEmpty() }) return
+    if (!weekly && loaded.all { it.entries.isEmpty() } && standings.isEmpty()) return
 
     Spacer(Modifier.height(30.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -76,7 +91,7 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
         PeriodChip("This week", selected = weekly) { weekly = true }
     }
     Spacer(Modifier.height(10.dp))
-    if (loaded.all { it.entries.isEmpty() }) {
+    if (loaded.all { it.entries.isEmpty() } && standings.isEmpty()) {
         Text(
             "No scores this week yet — the race is wide open!",
             fontSize = 12.sp,
@@ -92,6 +107,87 @@ fun ArcadeHomeInsights(leaderboard: LeaderboardService) {
                     GameBoardCard(board, leaderboard.currentUserId)
                 }
             }
+            if (standings.isNotEmpty()) {
+                BattleshipStandingsCard(standings, leaderboard.currentUserId)
+            }
+        }
+    }
+}
+
+/**
+ * Battleship's ladder in the home strip: same card shape as the score boards,
+ * but rows read W/L because matches are won, not scored.
+ */
+@Composable
+private fun BattleshipStandingsCard(standings: List<Standing>, myUserId: String?) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .width(224.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(ArcadeColors.Chip.copy(alpha = 0.75f))
+            .plainClickable { expanded = !expanded }
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Battleship",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = ArcadeColors.Ink,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                if (standings.size >= 15) "15+ players" else "${standings.size} player" +
+                    if (standings.size == 1) "" else "s",
+                fontSize = 10.sp,
+                color = ArcadeColors.Muted,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        val medals = listOf("🥇", "🥈", "🥉")
+        val visible = if (expanded) standings else standings.take(3)
+        visible.forEachIndexed { i, row ->
+            val isMe = row.userId == myUserId
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 2.dp),
+            ) {
+                Text(
+                    if (i < 3) medals[i] else "${i + 1}.",
+                    fontSize = if (i < 3) 12.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ArcadeColors.Muted,
+                    modifier = Modifier.width(22.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    row.displayName + if (isMe) " (you)" else "",
+                    fontSize = 12.sp,
+                    fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
+                    color = ArcadeColors.Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "${row.wins}W · ${row.losses}L",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = ArcadeColors.Ink,
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("Won matches · all-time", fontSize = 10.sp, color = ArcadeColors.Muted)
+        if (standings.size > 3) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (expanded) "▴ Show less" else "▾ Top ${standings.size}",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = ArcadeColors.Pink,
+            )
         }
     }
 }

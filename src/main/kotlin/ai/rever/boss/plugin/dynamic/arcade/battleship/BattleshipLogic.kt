@@ -39,6 +39,9 @@ object BattleshipLogic {
 
     fun cellOf(row: Int, col: Int): Int = row * SIZE + col
 
+    /** Classic battleship coordinates: rows A-J, columns 1-10 ("B7"). */
+    fun cellName(cell: Int): String = "${'A' + rowOf(cell)}${colOf(cell) + 1}"
+
     /**
      * The cells a ship would occupy from [origin], or null if it would run off
      * the grid. A horizontal run must stay on one row — the reason this checks

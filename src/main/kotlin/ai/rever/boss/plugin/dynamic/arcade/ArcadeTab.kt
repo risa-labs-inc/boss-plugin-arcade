@@ -152,6 +152,7 @@ class ArcadeTabComponent(
             when (screen) {
                 ArcadeScreen.Home -> ArcadeHomeScreen(
                     leaderboard = services.leaderboard,
+                    battleshipService = services.battleship,
                     onPlay2048 = { screen = ArcadeScreen.Game2048 },
                     onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
                     onPlaySkyStack = { screen = ArcadeScreen.SkyStack },

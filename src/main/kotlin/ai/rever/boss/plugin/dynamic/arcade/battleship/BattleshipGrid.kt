@@ -1,6 +1,11 @@
 package ai.rever.boss.plugin.dynamic.arcade.battleship
 
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeColors
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,9 +45,14 @@ private fun fillFor(mark: CellMark): Color = when (mark) {
     CellMark.BLOCKED -> Color(0xFFE0B4B4)
 }
 
+/** Ring color for the most recent shot — amber, so it reads against both
+ *  the pale miss cells and the pink hit cells. */
+private val LastShotRing = Color(0xFFE8960F)
+
 /**
  * A 10x10 board. [markAt] decides each cell's look; [onCellClick] is null for a
- * read-only board (your own fleet during play).
+ * read-only board (your own fleet during play). [highlightCell] draws a pulsing
+ * ring around one cell — used to point at the latest shot on each board.
  *
  * The grid keeps a 1:1 aspect ratio and caps its width so a wide split-view tab
  * does not stretch it into a rectangle.
@@ -51,7 +62,11 @@ fun BattleshipGrid(
     markAt: (Int) -> CellMark,
     modifier: Modifier = Modifier,
     onCellClick: ((Int) -> Unit)? = null,
+    highlightCell: Int? = null,
 ) {
+    // Only animate while there is something to point at — an infinite
+    // transition on every idle board would recompose it each frame for nothing.
+    val highlightAlpha = if (highlightCell != null) pulsingAlpha() else 0f
     Box(
         modifier = modifier
             .widthIn(max = 380.dp)
@@ -79,6 +94,17 @@ fun BattleshipGrid(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(fillFor(mark))
                                 .let { m ->
+                                    if (cell == highlightCell) {
+                                        m.border(
+                                            2.dp,
+                                            LastShotRing.copy(alpha = highlightAlpha),
+                                            RoundedCornerShape(4.dp),
+                                        )
+                                    } else {
+                                        m
+                                    }
+                                }
+                                .let { m ->
                                     if (onCellClick != null) m.plainClickable { onCellClick(cell) } else m
                                 },
                             contentAlignment = Alignment.Center,
@@ -104,6 +130,18 @@ fun BattleshipGrid(
             }
         }
     }
+}
+
+/** Gentle 0.45..1 alpha pulse for the last-shot ring. */
+@Composable
+private fun pulsingAlpha(): Float {
+    val transition = rememberInfiniteTransition()
+    val alpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+    )
+    return alpha
 }
 
 @Composable

@@ -511,6 +511,7 @@ private fun BattleshipBoard(viewModel: BattleshipViewModel) {
             } else {
                 null
             },
+            highlightCell = detail.myShots.lastOrNull()?.cell,
         )
         Spacer(Modifier.height(6.dp))
         Text(
@@ -521,7 +522,28 @@ private fun BattleshipBoard(viewModel: BattleshipViewModel) {
 
         Spacer(Modifier.height(20.dp))
 
-        BattleshipBoardLabel("Your fleet", "Where they have fired")
+        // Name their newest shot outright — the ringed cell answers "where",
+        // this line answers "what happened", without hunting through the marks.
+        val theirLast = detail.theirShots.lastOrNull()
+        BattleshipBoardLabel(
+            "Your fleet",
+            when {
+                theirLast == null -> "Where they have fired"
+                else -> {
+                    val where = BattleshipLogic.cellName(theirLast.cell)
+                    val struckShip = detail.myFleet.firstOrNull { theirLast.cell in it.cells }
+                        ?.let { entry ->
+                            BattleshipLogic.FLEET.firstOrNull { it.id == entry.id }?.label
+                                ?: entry.id
+                        }
+                    when (theirLast.result) {
+                        "sunk" -> "Their last shot sank your ${struckShip ?: "ship"} at $where"
+                        "hit" -> "Their last shot hit your ${struckShip ?: "ship"} at $where"
+                        else -> "Their last shot missed at $where"
+                    }
+                }
+            },
+        )
         BattleshipGrid(
             markAt = { cell ->
                 val shot = theirShots[cell]
@@ -533,6 +555,7 @@ private fun BattleshipBoard(viewModel: BattleshipViewModel) {
                     else -> CellMark.EMPTY
                 }
             },
+            highlightCell = theirLast?.cell,
         )
         Spacer(Modifier.height(10.dp))
         FleetRoster(

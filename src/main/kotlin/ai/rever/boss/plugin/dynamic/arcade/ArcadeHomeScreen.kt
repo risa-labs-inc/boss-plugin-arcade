@@ -1,5 +1,6 @@
 package ai.rever.boss.plugin.dynamic.arcade
 
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ArcadeHomeScreen(
     leaderboard: LeaderboardService,
+    battleshipService: BattleshipService,
     onPlay2048: () -> Unit,
     onPlayMirrorDash: () -> Unit,
     onPlaySkyStack: () -> Unit,
@@ -106,7 +108,7 @@ fun ArcadeHomeScreen(
                 onClick = onPlayBattleship,
             )
         }
-        ArcadeHomeInsights(leaderboard)
+        ArcadeHomeInsights(leaderboard, battleshipService)
     }
 }
 
