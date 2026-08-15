@@ -8,6 +8,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /**
  * Game state machine. Mirrors the two-phase timing of the original HTML game:
@@ -51,6 +53,18 @@ class Game2048ViewModel(
 
     private data class Snapshot(val cells: List<List<Int>>, val score: Int, val won: Boolean)
 
+    /**
+     * Persisted mid-run state, so a run survives tab closes and app restarts
+     * and can be played across sittings. Cleared the moment a run ends.
+     */
+    @Serializable
+    private data class SavedGame(
+        val cells: List<List<Int>>,
+        val score: Int,
+        val won: Boolean,
+        val keepPlaying: Boolean = false,
+    )
+
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state
 
@@ -62,10 +76,11 @@ class Game2048ViewModel(
     private var settleJob: Job? = null
     private var pendingBestSubmit: Job? = null
     private var bestToSubmit = 0
+    private val json = Json { ignoreUnknownKeys = true }
 
     init {
-        newGame()
         loadBest()
+        scope.launch { restoreOrNew() }
     }
 
     fun move(dr: Int, dc: Int): Boolean {
@@ -114,13 +129,17 @@ class Game2048ViewModel(
             busy = false
 
             if (over) {
+                clearSave()
                 submitRun()
                 delay(OVER_VEIL_DELAY_MS)
                 showVeil(Veil.OVER)
-            } else if (justWon && !keepPlaying) {
-                submitRun()
-                delay(WIN_VEIL_DELAY_MS)
-                showVeil(Veil.WIN)
+            } else {
+                persistSave()
+                if (justWon && !keepPlaying) {
+                    submitRun()
+                    delay(WIN_VEIL_DELAY_MS)
+                    showVeil(Veil.WIN)
+                }
             }
         }
         return true
@@ -164,6 +183,7 @@ class Game2048ViewModel(
             canUndo = false,
             fx = MoveFx(seq = cur.fx.seq + 1),
         )
+        persistSave()
     }
 
     fun newGame() {
@@ -184,11 +204,13 @@ class Game2048ViewModel(
             best = cur.best,
             fx = MoveFx(seq = cur.fx.seq + 1, spawnedIds = tiles.map { it.id }.toSet()),
         )
+        persistSave()
     }
 
     fun keepGoing() {
         keepPlaying = true
         _state.value = _state.value.copy(veil = null)
+        persistSave()
     }
 
     fun dismissVeilToNewGame() {
@@ -243,13 +265,82 @@ class Game2048ViewModel(
         }
     }
 
-    private fun snapshotOf(s: UiState): Snapshot {
-        val cells = List(Game2048Logic.SIZE) { r ->
+    private fun cellsOf(s: UiState): List<List<Int>> =
+        List(Game2048Logic.SIZE) { r ->
             List(Game2048Logic.SIZE) { c ->
                 s.tiles.firstOrNull { it.row == r && it.col == c }?.value ?: 0
             }
         }
-        return Snapshot(cells, s.score, s.won)
+
+    private fun snapshotOf(s: UiState): Snapshot = Snapshot(cellsOf(s), s.score, s.won)
+
+    // ── Cross-sitting resume ────────────────────────────────────────────────
+
+    private fun saveKey(): String = "save.$GAME." + (services.leaderboard.currentUserId ?: "local")
+
+    /** Restore the previous unfinished run if one is saved, else start fresh. */
+    private suspend fun restoreOrNew() {
+        val saved = runCatching {
+            services.storage?.getJson(saveKey())?.let { json.decodeFromString<SavedGame>(it) }
+        }.getOrNull()
+        if (saved == null || !isResumable(saved)) {
+            newGame()
+            return
+        }
+        val tiles = buildList {
+            saved.cells.forEachIndexed { r, row ->
+                row.forEachIndexed { c, value ->
+                    if (value > 0) add(TileData(id = nextId++, value = value, row = r, col = c))
+                }
+            }
+        }
+        keepPlaying = saved.keepPlaying
+        undoSnapshot = null
+        submittedScore = 0
+        bestToSubmit = 0
+        val cur = _state.value
+        // Same run continuing, not a new one — deliberately no START event here.
+        _state.value = UiState(
+            tiles = tiles,
+            score = saved.score,
+            best = cur.best,
+            won = saved.won,
+            fx = MoveFx(seq = cur.fx.seq + 1),
+        )
+    }
+
+    private fun isResumable(saved: SavedGame): Boolean {
+        if (saved.score < 0) return false
+        if (saved.cells.size != Game2048Logic.SIZE) return false
+        if (saved.cells.any { it.size != Game2048Logic.SIZE }) return false
+        val values = saved.cells.flatten()
+        if (values.any { it != 0 && (it < 2 || it > 1_048_576 || (it and (it - 1)) != 0) }) return false
+        if (values.all { it == 0 }) return false
+        val tiles = buildList {
+            saved.cells.forEachIndexed { r, row ->
+                row.forEachIndexed { c, v -> if (v > 0) add(TileData(0, v, r, c)) }
+            }
+        }
+        // A board with no legal move is a finished run — never resume into it.
+        return Game2048Logic.canMove(tiles)
+    }
+
+    /** Write the current board so the run survives tab close and app restart. */
+    private fun persistSave() {
+        val s = _state.value
+        if (s.over) return
+        val payload = json.encodeToString(
+            SavedGame(cellsOf(s), s.score, s.won, keepPlaying),
+        )
+        services.pluginScope.launch {
+            runCatching { services.storage?.putJson(saveKey(), payload) }
+        }
+    }
+
+    private fun clearSave() {
+        services.pluginScope.launch {
+            runCatching { services.storage?.remove(saveKey()) }
+        }
     }
 
     private fun bestKey(): String = "best.$GAME." + (services.leaderboard.currentUserId ?: "local")

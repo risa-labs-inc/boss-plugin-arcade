@@ -37,7 +37,7 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 ├── LeaderboardOverlay.kt     # top-10 overlay
 ├── game2048/
 │   ├── Game2048Logic.kt      # pure rules (port of the HTML logic block)
-│   ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil timing
+│   ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil; cross-sitting resume
 │   ├── Game2048Board.kt      # board + animated tiles
 │   ├── Game2048Chrome.kt     # header, score chips, veil
 │   └── Game2048Screen.kt     # assembly + keyboard input
@@ -76,6 +76,11 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
     ├── WordleChrome.kt       # header, toast, result veil + countdown
     └── WordleScreen.kt       # assembly + physical keyboard input
 ```
+
+2048 auto-saves the run after every settled move (`save.2048.<user>` via
+`putJson`) and resumes it on open across tab closes and app restarts; the save
+is cleared on game over and overwritten by New game. Resuming records no
+`start` analytics event — it is the same run continuing.
 
 Leaderboards have two windows: all-time and "this week" (Monday 00:00 UTC,
 `LeaderboardService.weekStartIso()` → `arcade_leaderboard(p_since)`); both the
