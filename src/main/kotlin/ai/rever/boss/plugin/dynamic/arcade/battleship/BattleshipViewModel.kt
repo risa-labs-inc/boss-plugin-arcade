@@ -268,6 +268,10 @@ class BattleshipViewModel(
             message = "Place all five ships first"
             return
         }
+        // Multiplayer: each player pays for their own seat at match start —
+        // the challenger here, the accepter in their own client. Gate now,
+        // charge only once the server actually accepts the fleet.
+        if (!services.credits.canStartRun(GAME)) return
         scope.launch {
             busy = true
             val result = when (current) {
@@ -278,6 +282,7 @@ class BattleshipViewModel(
             }
             result
                 .onSuccess { matchId ->
+                    services.credits.chargeRun(GAME)
                     services.leaderboard.recordEvent(
                         services.pluginScope, GAME, ArcadeEvent.START,
                     )

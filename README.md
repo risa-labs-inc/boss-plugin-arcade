@@ -51,6 +51,30 @@ original single-file HTML versions.
   sharing the same leaderboard plumbing (each game is a `game` key in
   `arcade_scores` — no backend change needed per game).
 
+## Arcade credits
+
+Every game run costs Arcade credits — play money (✦), tracked server-side per
+user with a weekly floor of 10,000 (balances refill up to the floor every
+Monday). The home screen shows your balance as a chip and each game card wears
+its price tag; poker charges nothing at run start because its buy-ins are the
+cost, handled inside the poker web app.
+
+- **Charging is latency-free by design**: starting a run checks only the
+  *cached* balance and fires the real `arcade_charge_run` in the background,
+  optimistically deducting locally. A charge that comes back
+  `insufficient_credits` doesn't interrupt the run that already began — the
+  corrected balance simply blocks the *next* one, with an in-game card showing
+  balance, cost, and a "Request credits" button.
+- **Top-ups are requested in-app** (amount + note, from the chip or the
+  blocking card; one open request at a time) and approved by admins right in
+  the Arcade: the Admin panel on the home screen lists requests, pending first,
+  with approve (amount editable) / deny.
+- **Multiplayer**: each Battleship player is charged by their own client at
+  their own match start (challenge sent / challenge accepted).
+- **Degrade open, always**: signed out, no Supabase provider, credits schema
+  not deployed yet, or any credits RPC failing — the credits UI hides and every
+  game plays free. A credits outage can never lock anyone out.
+
 ## How scores work
 
 - Identity comes from the host (`authDataProvider`) — no extra login.
@@ -72,6 +96,12 @@ and three RPCs: `arcade_submit_score`, `arcade_personal_best`,
 `arcade_leaderboard`. The leaderboard function reads display names from
 `auth.users` (security definer); switch the join to your profiles table if
 preferred.
+
+The credits economy needs its own RPCs (`arcade_my_credits`,
+`arcade_charge_run`, `arcade_request_credits`, `arcade_is_admin`,
+`arcade_admin_requests`, `arcade_admin_resolve`), landed by a separate SQL
+migration. Until they exist the plugin detects the errors and plays free with
+the credits UI hidden, so the client can ship ahead of the schema.
 
 ## MCP tools
 

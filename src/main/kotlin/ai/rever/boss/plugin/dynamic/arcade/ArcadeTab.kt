@@ -23,6 +23,7 @@ import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,6 +35,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 object ArcadeTabType : TabTypeInfo {
     override val typeId = TabTypeId(typeId = "arcade", pluginId = ARCADE_PLUGIN_ID)
@@ -70,6 +72,8 @@ class ArcadeTabComponent(
     private val componentScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var screen by mutableStateOf<ArcadeScreen>(ArcadeScreen.Home)
+    private var requestDialogOpen by mutableStateOf(false)
+    private var adminPanelOpen by mutableStateOf(false)
 
     // Created on first play and kept for the tab's lifetime, so hopping
     // Home <-> game never resets a run in progress.
@@ -89,6 +93,12 @@ class ArcadeTabComponent(
         services.leaderboard.recordEvent(
             services.pluginScope, LeaderboardService.ARCADE_KEY, ArcadeEvent.OPEN,
         )
+        // Balance + admin visibility for this tab. Failures leave credits
+        // hidden and every game free; the home screen re-reads on each visit.
+        componentScope.launch {
+            services.credits.refresh()
+            services.credits.refreshAdmin()
+        }
         lifecycle.doOnDestroy {
             game2048?.onDisposed()
             mirrorDash?.onDisposed()
@@ -168,6 +178,9 @@ class ArcadeTabComponent(
                 ArcadeScreen.Home -> ArcadeHomeScreen(
                     leaderboard = services.leaderboard,
                     battleshipService = services.battleship,
+                    credits = services.credits,
+                    onRequestCredits = { requestDialogOpen = true },
+                    onOpenAdmin = { adminPanelOpen = true },
                     onPlay2048 = { screen = ArcadeScreen.Game2048 },
                     onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
                     onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
@@ -218,6 +231,32 @@ class ArcadeTabComponent(
                 ArcadeScreen.Poker -> PokerScreen(
                     viewModel = poker(),
                     onBack = { screen = ArcadeScreen.Home },
+                )
+            }
+
+            // Credits overlays live above every screen: a refused run start
+            // blocks wherever it happened, and the request dialog is reachable
+            // from both the home chip and the blocking card.
+            val blocked by services.credits.blockedRun.collectAsState()
+            val blockedNow = blocked
+            if (blockedNow != null && !requestDialogOpen) {
+                InsufficientCreditsCard(
+                    blocked = blockedNow,
+                    credits = services.credits,
+                    onRequest = { requestDialogOpen = true },
+                    onDismiss = { services.credits.dismissBlockedRun() },
+                )
+            }
+            if (requestDialogOpen) {
+                RequestCreditsDialog(
+                    credits = services.credits,
+                    onClose = { requestDialogOpen = false },
+                )
+            }
+            if (adminPanelOpen) {
+                AdminCreditsOverlay(
+                    credits = services.credits,
+                    onClose = { adminPanelOpen = false },
                 )
             }
         }

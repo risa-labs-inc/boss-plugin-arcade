@@ -41,6 +41,7 @@ class ArcadeServices(
     val auth: AuthDataProvider?,
     val storage: PluginStorageProvider?,
     val leaderboard: LeaderboardService,
+    val credits: CreditsService,
     val battleship: BattleshipService,
     val splitView: SplitViewOperations?,
     /** Poker mints one-time console-SSO codes through this (see poker_sso_code()). */
@@ -109,6 +110,10 @@ object ArcadeDynamicPlugin : DynamicPlugin {
                 context.authDataProvider,
                 storage,
             ),
+            credits = CreditsService(
+                context.supabaseDataProvider,
+                context.authDataProvider,
+            ) { context.pluginScope },
             battleship = BattleshipService(
                 context.supabaseDataProvider,
                 context.authDataProvider,

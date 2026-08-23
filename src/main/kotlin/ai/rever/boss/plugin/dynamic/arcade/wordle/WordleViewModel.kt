@@ -120,7 +120,10 @@ class WordleViewModel(
 
         // The day's first accepted guess is where the attempt actually begins —
         // not startDay(), which re-runs on every tab open to restore saved state.
+        // It is also where the run's credits charge lands; a refused start
+        // keeps the board empty (the blocking card explains why).
         if (s.rows.isEmpty()) {
+            if (!services.credits.tryStartRun(GAME)) return false
             services.leaderboard.recordEvent(services.pluginScope, GAME, ArcadeEvent.START)
         }
 

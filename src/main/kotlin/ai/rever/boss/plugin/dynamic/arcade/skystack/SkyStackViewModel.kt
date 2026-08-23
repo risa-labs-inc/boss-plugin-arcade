@@ -44,6 +44,8 @@ class SkyStackViewModel(
     }
 
     fun start() {
+        // Charge-on-start (see CreditsService): refused = stay on the menu/over card.
+        if (!services.credits.tryStartRun(GAME)) return
         submitScore(score)
         revealJob?.cancel()
         engine.reset()

@@ -47,6 +47,8 @@ class MirrorDashViewModel(
     }
 
     fun start() {
+        // Charge-on-start (see CreditsService): refused = stay on the menu/over card.
+        if (!services.credits.tryStartRun(GAME)) return
         engine.reset()
         score = 0
         mult = 1

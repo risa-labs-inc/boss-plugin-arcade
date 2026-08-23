@@ -35,6 +35,8 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 ├── ArcadeHomeScreen.kt       # game picker
 ├── LeaderboardService.kt     # Supabase RPC client (arcade_* functions)
 ├── LeaderboardOverlay.kt     # top-10 overlay
+├── CreditsService.kt         # credits economy client (arcade_my_credits/charge/request/admin)
+├── CreditsUi.kt              # balance chip, out-of-credits card, request dialog, admin panel
 ├── game2048/
 │   ├── Game2048Logic.kt      # pure rules (port of the HTML logic block)
 │   ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil; cross-sitting resume
@@ -113,6 +115,27 @@ Key patterns:
 - Wordle's shared daily word is client-derived (hash of the UTC epoch day over
   the embedded answer list) — no server, so every machine agrees; the day's
   guesses persist to plugin storage per user so a board can't be replayed.
+
+**Arcade credits** (`CreditsService` + `CreditsUi`): every run costs play-money
+credits, held server-side (weekly floor 10,000; admins approve top-up requests
+in-app). The charging policy is *cached pre-check + optimistic background
+charge*: `tryStartRun(game)` never touches the network — it gates on the cached
+`snapshot`, optimistically deducts, and fires `arcade_charge_run` on the plugin
+scope; an `insufficient_credits` response only corrects the cache, so it is the
+NEXT run that blocks (via the tab-level `InsufficientCreditsCard` over whatever
+screen refused). The charge hook is the same place each game records
+`ArcadeEvent.START` — one charge per run start, restarts included; 2048's
+cross-sitting resume charges nothing (same run continuing), Wordle charges on
+the day's first accepted guess, and Battleship (multiplayer) splits the hook:
+`canStartRun` gates the fleet submit, `chargeRun` fires only in `onSuccess`, so
+each player pays for their own seat once the server accepts the match. Poker
+charges nothing — buy-ins in the web app are its cost. **Degrade open is the
+invariant**: null provider, signed out, credits schema not deployed, offline,
+or any RPC/parse failure leaves `snapshot` null → credits UI hidden, every game
+free, nothing thrown into the host (LinkageError included). Never let a credits
+failure block a game. Costs shown before the first charge are the embedded
+`DEFAULT_COST`; the server's `cost` field overrides per game once a charge
+answers. `arcade_is_admin` returns a bare boolean, not JSON.
 
 Battleship is the odd one out: async head-to-head rather than a scored run, so
 it has no leaderboard entry and its own `arcade_bs_standings` (W/L) instead.

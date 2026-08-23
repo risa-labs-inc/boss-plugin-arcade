@@ -58,7 +58,9 @@ class TypingSprintViewModel(
         if (phase == Phase.DONE) return
         // A jump of many chars at once is a paste, not typing.
         if (newText.length > typed.length + 3) return
-        if (phase == Phase.IDLE && newText.isNotEmpty()) start()
+        // A refused start (out of credits) also swallows the keystroke, so the
+        // sprint can't fill with text while no clock is running.
+        if (phase == Phase.IDLE && newText.isNotEmpty() && !start()) return
         typed = newText.take(passage.length)
         if (typed.length == passage.length) {
             bankedCorrect += correctIn(typed, passage)
@@ -87,7 +89,9 @@ class TypingSprintViewModel(
         if (phase == Phase.RUNNING) finish()
     }
 
-    private fun start() {
+    /** Returns false when the run may not begin (charge-on-start refused). */
+    private fun start(): Boolean {
+        if (!services.credits.tryStartRun(GAME)) return false
         phase = Phase.RUNNING
         // Per-run, not per-session: without this a sprint slower than an earlier
         // one in the same sitting is silently never recorded.
@@ -106,6 +110,7 @@ class TypingSprintViewModel(
                 }
             }
         }
+        return true
     }
 
     private fun refreshLiveStats() {

@@ -1,12 +1,19 @@
 package ai.rever.boss.plugin.dynamic.arcade
 
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
+import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
+import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashViewModel
+import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackViewModel
+import ai.rever.boss.plugin.dynamic.arcade.typingsprint.TypingSprintViewModel
+import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -18,6 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +43,9 @@ import androidx.compose.ui.unit.sp
 fun ArcadeHomeScreen(
     leaderboard: LeaderboardService,
     battleshipService: BattleshipService,
+    credits: CreditsService,
+    onRequestCredits: () -> Unit,
+    onOpenAdmin: () -> Unit,
     onPlay2048: () -> Unit,
     onPlayMirrorDash: () -> Unit,
     onPlaySkyStack: () -> Unit,
@@ -42,6 +55,19 @@ fun ArcadeHomeScreen(
     onPlayPoker: () -> Unit,
     battleshipWaiting: Int = 0,
 ) {
+    // "Tab focus" refresh: the home screen recomposes from scratch on every
+    // return to it (and on tab open), so this re-reads the balance each time.
+    LaunchedEffect(Unit) {
+        credits.refresh()
+        credits.refreshAdmin()
+    }
+    val isAdmin by credits.isAdmin.collectAsState()
+    // Collected so the cost tags (and their appearance/disappearance when
+    // credits degrade or recover) recompose with the snapshot.
+    val creditsSnapshot by credits.snapshot.collectAsState()
+    fun cost(game: String): String? =
+        if (creditsSnapshot == null) null else credits.costLabel(game)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -61,7 +87,15 @@ fun ArcadeHomeScreen(
             fontSize = 14.sp,
             color = ArcadeColors.InkSoft,
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(14.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CreditsChip(credits, onRequest = onRequestCredits)
+            if (isAdmin) ArcadeGhostButton("Admin", onClick = onOpenAdmin)
+        }
+        Spacer(Modifier.height(20.dp))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -70,30 +104,35 @@ fun ArcadeHomeScreen(
                 title = "2048",
                 subtitle = "Join tiles, chase the crown",
                 badge = { TileBadge("2048", ArcadeColors.Pink) },
+                costLabel = cost(Game2048ViewModel.GAME),
                 onClick = onPlay2048,
             )
             GameCard(
                 title = "Mirror Dash",
                 subtitle = "One tap, two sparks, don't crash",
                 badge = { TileBadge("⟷", Color(0xFF7547EF)) },
+                costLabel = cost(MirrorDashViewModel.GAME),
                 onClick = onPlayMirrorDash,
             )
             GameCard(
                 title = "Sky Stack",
                 subtitle = "Stack from dusk to the stars",
                 badge = { TileBadge("▲", Color(0xFFFF9E7A)) },
+                costLabel = cost(SkyStackViewModel.GAME),
                 onClick = onPlaySkyStack,
             )
             GameCard(
                 title = "Typing Sprint",
                 subtitle = "60 seconds, fast and clean",
                 badge = { TileBadge("⌨", Color(0xFF4CA6A8)) },
+                costLabel = cost(TypingSprintViewModel.GAME),
                 onClick = onPlayTypingSprint,
             )
             GameCard(
                 title = "Wordle",
                 subtitle = "One shared word a day",
                 badge = { TileBadge("W", Color(0xFF6AAA64)) },
+                costLabel = cost(WordleViewModel.GAME),
                 onClick = onPlayWordle,
             )
             GameCard(
@@ -106,6 +145,7 @@ fun ArcadeHomeScreen(
                     "Head to head, one shot at a time"
                 },
                 badge = { TileBadge(if (battleshipWaiting > 0) "$battleshipWaiting" else "⚓", Color(0xFF3E7CB1)) },
+                costLabel = cost(BattleshipViewModel.GAME),
                 onClick = onPlayBattleship,
             )
             GameCard(
@@ -138,6 +178,9 @@ private fun GameCard(
     subtitle: String,
     badge: @Composable () -> Unit,
     onClick: () -> Unit,
+    // Per-run price tag ("100 ✦"). Null = credits hidden (degraded) or a game
+    // that charges nothing here (poker's buy-ins live in the web app).
+    costLabel: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -159,6 +202,22 @@ private fun GameCard(
             color = ArcadeColors.Muted,
             textAlign = TextAlign.Center,
         )
+        if (costLabel != null) {
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(ArcadeColors.Cell)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    costLabel,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ArcadeColors.InkSoft,
+                )
+            }
+        }
         Spacer(Modifier.height(14.dp))
         ArcadePrimaryButton(text = "Play", onClick = onClick)
     }

@@ -187,6 +187,9 @@ class Game2048ViewModel(
     }
 
     fun newGame() {
+        // Charge-on-start (see CreditsService): refused = no new run begins.
+        // The current board is left untouched so nothing is lost or wiped.
+        if (!services.credits.tryStartRun(GAME)) return
         // A run abandoned via "New game" still counts — record it before wiping.
         submitRun()
         settleJob?.cancel()
