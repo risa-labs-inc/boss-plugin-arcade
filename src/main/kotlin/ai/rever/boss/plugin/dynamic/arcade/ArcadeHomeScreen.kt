@@ -39,6 +39,7 @@ fun ArcadeHomeScreen(
     onPlayTypingSprint: () -> Unit,
     onPlayWordle: () -> Unit,
     onPlayBattleship: () -> Unit,
+    onPlayPoker: () -> Unit,
     battleshipWaiting: Int = 0,
 ) {
     Column(
@@ -106,6 +107,12 @@ fun ArcadeHomeScreen(
                 },
                 badge = { TileBadge(if (battleshipWaiting > 0) "$battleshipWaiting" else "⚓", Color(0xFF3E7CB1)) },
                 onClick = onPlayBattleship,
+            )
+            GameCard(
+                title = "Poker",
+                subtitle = "No-Limit Hold'em · live multiplayer",
+                badge = { TileBadge("♠", Color(0xFF2F6B4F)) },
+                onClick = onPlayPoker,
             )
         }
         ArcadeHomeInsights(leaderboard, battleshipService)

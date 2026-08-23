@@ -68,14 +68,17 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── BattleshipSoundPlayer.kt # synthesized shot sounds (hit/miss/sunk, both sides)
 │   ├── BattleshipGrid.kt      # shared 10x10 board + fleet roster
 │   └── BattleshipScreen.kt    # lobby, opponent picker, placement, play board
-└── wordle/
-    ├── WordleWords.kt        # embedded answer + guess dictionaries, daily pick
-    ├── WordleLogic.kt        # pure rules: evaluation, key hints, points
-    ├── WordleViewModel.kt    # daily state machine, per-guess persistence
-    ├── WordleGrid.kt         # 6x5 board, tile flip/shake animations
-    ├── WordleKeyboard.kt     # on-screen QWERTY with verdict coloring
-    ├── WordleChrome.kt       # header, toast, result veil + countdown
-    └── WordleScreen.kt       # assembly + physical keyboard input
+├── wordle/
+│   ├── WordleWords.kt        # embedded answer + guess dictionaries, daily pick
+│   ├── WordleLogic.kt        # pure rules: evaluation, key hints, points
+│   ├── WordleViewModel.kt    # daily state machine, per-guess persistence
+│   ├── WordleGrid.kt         # 6x5 board, tile flip/shake animations
+│   ├── WordleKeyboard.kt     # on-screen QWERTY with verdict coloring
+│   ├── WordleChrome.kt       # header, toast, result veil + countdown
+│   └── WordleScreen.kt       # assembly + physical keyboard input
+└── poker/
+    ├── PokerViewModel.kt     # owns the embedded-browser handle for the poker web app
+    └── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
 ```
 
 2048 auto-saves the run after every settled move (`save.2048.<user>` via

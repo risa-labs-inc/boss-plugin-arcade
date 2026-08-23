@@ -39,6 +39,11 @@ original single-file HTML versions.
     Turn them on from the Battleship lobby and you'll get a toast — at most one
     every 30 minutes, with a button straight to the board. Toasts are in-app, so
     a challenge sent while BOSS is closed shows up at your next launch.
+  - **Poker** — live multiplayer No-Limit Hold'em. Unlike the other games, it's
+    not a Compose port: the card embeds the poker web app via the host's
+    browser service, so the table (and its own leaderboards) lives in the web
+    app and there is no `arcade_scores` entry. If the embedded browser isn't
+    available, the screen shows the table URL to open externally instead.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in

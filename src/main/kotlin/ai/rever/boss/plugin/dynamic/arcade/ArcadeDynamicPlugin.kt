@@ -5,6 +5,7 @@ import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
 import ai.rever.boss.plugin.api.SplitViewOperations
+import ai.rever.boss.plugin.browser.BrowserService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
@@ -38,6 +39,7 @@ class ArcadeServices(
     val leaderboard: LeaderboardService,
     val battleship: BattleshipService,
     val splitView: SplitViewOperations?,
+    val browserService: BrowserService?,
 ) {
     /**
      * Resolved on every use, never cached. The host watchdog restarts a plugin
@@ -92,6 +94,7 @@ object ArcadeDynamicPlugin : DynamicPlugin {
                 context.authDataProvider,
             ),
             splitView = context.splitViewOperations,
+            browserService = context.browserService,
         )
         this.services = services
 
