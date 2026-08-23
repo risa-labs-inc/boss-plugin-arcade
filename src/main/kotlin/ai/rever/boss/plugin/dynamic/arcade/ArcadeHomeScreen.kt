@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -248,21 +249,30 @@ private fun GameCard(
             fontSize = 12.sp,
             color = CasinoColors.TextMuted,
             textAlign = TextAlign.Center,
+            // Every card reserves exactly two subtitle lines so a short subtitle
+            // ("One shared word a day") cannot make its card shorter than the rest.
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
-        if (costLabel != null) {
-            Spacer(Modifier.height(6.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(CasinoColors.Gold.copy(alpha = 0.12f))
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    costLabel,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = CasinoColors.Gold,
-                )
+        Spacer(Modifier.height(6.dp))
+        // The cost-tag slot is reserved even when there is no tag (poker charges
+        // nothing here) so every card measures the same height as its neighbors.
+        Box(modifier = Modifier.height(20.dp), contentAlignment = Alignment.Center) {
+            if (costLabel != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(CasinoColors.Gold.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        costLabel,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CasinoColors.Gold,
+                    )
+                }
             }
         }
         Spacer(Modifier.height(14.dp))

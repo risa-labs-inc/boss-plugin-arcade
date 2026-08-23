@@ -85,6 +85,9 @@ object CasinoColors {
     val NeonBattleship = Color(0xFF7CC8FF) // ice blue
     val NeonPoker = Color(0xFFF2C94C) // gold, over a felt-green badge
     val PokerFelt = Color(0xFF1C5B3F)
+
+    /** Deep table felt behind the poker screen's browser (loading/fallback backdrop). */
+    val PokerFeltDeep = Color(0xFF102319)
 }
 
 /**
@@ -185,10 +188,16 @@ fun MarqueeLights(modifier: Modifier, count: Int = 9, color: Color = CasinoColor
 /**
  * The neon sign headline: a blurred halo copy behind a crisp bright core.
  * The halo (only) carries a very occasional flicker; the core stays steady
- * so the title is always legible.
+ * so the title is always legible. [neon]/[core] default to the home marquee's
+ * pink; a screen can pass its own hue (poker's gold-over-felt header).
  */
 @Composable
-fun NeonSignTitle(text: String, fontSize: androidx.compose.ui.unit.TextUnit = 44.sp) {
+fun NeonSignTitle(
+    text: String,
+    fontSize: androidx.compose.ui.unit.TextUnit = 44.sp,
+    neon: Color = CasinoColors.TitleNeon,
+    core: Color = CasinoColors.TitleCore,
+) {
     val transition = rememberInfiniteTransition(label = "neonFlicker")
     val flicker by transition.animateFloat(
         initialValue = 1f,
@@ -214,7 +223,7 @@ fun NeonSignTitle(text: String, fontSize: androidx.compose.ui.unit.TextUnit = 44
             fontSize = fontSize,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 3.sp,
-            color = CasinoColors.TitleNeon.copy(alpha = 0.75f * flicker),
+            color = neon.copy(alpha = 0.75f * flicker),
             modifier = Modifier.blur(14.dp),
         )
         Text(
@@ -222,10 +231,10 @@ fun NeonSignTitle(text: String, fontSize: androidx.compose.ui.unit.TextUnit = 44
             fontSize = fontSize,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 3.sp,
-            color = CasinoColors.TitleCore,
+            color = core,
             style = TextStyle(
                 shadow = Shadow(
-                    color = CasinoColors.TitleNeon.copy(alpha = 0.9f * flicker),
+                    color = neon.copy(alpha = 0.9f * flicker),
                     blurRadius = 18f,
                 ),
             ),
