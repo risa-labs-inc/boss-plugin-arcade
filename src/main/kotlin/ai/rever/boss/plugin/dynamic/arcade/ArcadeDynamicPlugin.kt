@@ -5,6 +5,7 @@ import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
 import ai.rever.boss.plugin.api.SplitViewOperations
+import ai.rever.boss.plugin.api.SupabaseDataProvider
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
@@ -38,6 +39,8 @@ class ArcadeServices(
     val leaderboard: LeaderboardService,
     val battleship: BattleshipService,
     val splitView: SplitViewOperations?,
+    /** Poker mints one-time console-SSO codes through this (see poker_sso_code()). */
+    val supabase: SupabaseDataProvider?,
     /**
      * The host's BrowserService, deliberately typed as Any?. Older BOSS
      * consoles bundle a plugin-api without the browser package; naming the
@@ -101,6 +104,7 @@ object ArcadeDynamicPlugin : DynamicPlugin {
                 context.authDataProvider,
             ),
             splitView = context.splitViewOperations,
+            supabase = context.supabaseDataProvider,
             // Throwable-catching on purpose: NoSuchMethodError on pre-browser-API consoles.
             browserServiceRaw = runCatching { context.browserService }.getOrNull(),
         )

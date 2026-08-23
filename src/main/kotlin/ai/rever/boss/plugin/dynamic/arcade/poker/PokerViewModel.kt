@@ -10,8 +10,11 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Where the poker web app lives. Placeholder host — the final URL lands before release. */
+/** Where the poker web app lives. */
 const val POKER_URL = "https://boss-poker.web.app"
+
+/** poker_sso_code() returns 24 random bytes hex-encoded. */
+private val SSO_CODE_SHAPE = Regex("[0-9a-f]{48}")
 
 /**
  * Owns the embedded browser showing the poker web app. Like the game VMs, the
@@ -62,7 +65,7 @@ class PokerViewModel(
         creating = true
         phase = Phase.CREATING
         scope.launch {
-            val created = runCatching { service.createBrowser(BrowserConfig(url = POKER_URL)) }.getOrNull()
+            val created = runCatching { service.createBrowser(BrowserConfig(url = ssoUrl())) }.getOrNull()
             if (created != null) {
                 // Table links (target=_blank, window.open) stay inside the tab.
                 created.setOpenInNewTabCallback { url -> scope.launch { created.loadUrl(url) } }
@@ -74,6 +77,23 @@ class PokerViewModel(
             }
             creating = false
         }
+    }
+
+    /**
+     * Console SSO: mint a one-time code as the signed-in BOSS user (see
+     * poker_sso_code() in the poker schema) and hand it to the web app in the
+     * URL, so opening the tab signs the player in with zero clicks. Codes are
+     * single-use and 60-second, minted fresh per browser creation. Any
+     * failure (signed out, old schema, network) falls back to the plain URL,
+     * where the app shows its own email sign-in.
+     */
+    private suspend fun ssoUrl(): String {
+        val code = services.supabase
+            ?.let { runCatching { it.rpc("poker_sso_code", "{}").getOrNull() }.getOrNull() }
+            ?.trim()
+            ?.removeSurrounding("\"")
+            ?.takeIf { it.matches(SSO_CODE_SHAPE) }
+        return if (code != null) "$POKER_URL/?sso=$code" else POKER_URL
     }
 
     /** The live handle, or null when it isn't usable (screen shows the fallback). */
