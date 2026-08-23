@@ -78,7 +78,8 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   └── WordleScreen.kt       # assembly + physical keyboard input
 └── poker/
     ├── PokerViewModel.kt     # owns the embedded-browser handle for the poker web app
-    └── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
+    ├── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
+    └── PokerAgentService.kt  # MCP poker client: console-SSO auth + edge-function ops over JDK HTTP
 ```
 
 2048 auto-saves the run after every settled move (`save.2048.<user>` via
@@ -147,6 +148,21 @@ closed is seen at next launch, not at send time.
 
 Outgoing unanswered challenges are capped at 3 server-side. One player opened
 nine in 90 seconds, which is how most games ended up idle.
+
+Poker's MCP tools (`poker_lobby/state/sit/leave/act`) don't drive the embedded
+web app — they play server-side through `PokerAgentService`, which re-implements
+the web app's console-SSO flow: `poker_sso_code()` RPC (runs as the signed-in
+user) → `sso_exchange` at the poker edge function → GoTrue `/auth/v1/verify` →
+short-lived access token, cached in memory and re-minted on expiry or any 401
+(no refresh tokens on purpose — codes are free). Mutating ops fetch the table
+version first and retry once on `version_conflict`, reusing the same `actionId`
+so the server's idempotency guard makes the retry safe. The service deliberately
+touches only `SupabaseDataProvider` + JDK HTTP + kotlinx-serialization — nothing
+that could LinkageError on an old console (the 0.1.22 lesson) — and every
+failure returns an error string to the agent, never a throw into the host. The
+embedded anon key is the project's PUBLIC anon key (ships in the web bundle);
+visibility is `surfacePoker` in `ArcadeMcpTools`: best-effort (poker still plays
+when no browser exists), first-use for reads, every call for mutations.
 
 ## Adding a new game (checklist)
 

@@ -13,8 +13,8 @@ import kotlinx.coroutines.launch
 /** Where the poker web app lives. */
 const val POKER_URL = "https://boss-poker.web.app"
 
-/** poker_sso_code() returns 24 random bytes hex-encoded. */
-private val SSO_CODE_SHAPE = Regex("[0-9a-f]{48}")
+/** poker_sso_code() returns 24 random bytes hex-encoded. Shared with [PokerAgentService]. */
+internal val SSO_CODE_SHAPE = Regex("[0-9a-f]{48}")
 
 /**
  * Owns the embedded browser showing the poker web app. Like the game VMs, the

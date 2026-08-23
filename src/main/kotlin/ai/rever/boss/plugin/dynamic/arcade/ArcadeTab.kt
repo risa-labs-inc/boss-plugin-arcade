@@ -145,6 +145,13 @@ class ArcadeTabComponent(
     private fun battleship(): BattleshipViewModel =
         battleship ?: BattleshipViewModel(componentScope, services).also { battleship = it }
 
+    /** MCP entry point: surface the embedded poker table on screen (realtime mirrors the play). */
+    override fun showPoker(): PokerViewModel {
+        val vm = poker()
+        screen = ArcadeScreen.Poker
+        return vm
+    }
+
     private fun poker(): PokerViewModel =
         poker ?: PokerViewModel(componentScope, services).also { poker = it }
 

@@ -44,6 +44,8 @@ original single-file HTML versions.
     browser service, so the table (and its own leaderboards) lives in the web
     app and there is no `arcade_scores` entry. If the embedded browser isn't
     available, the screen shows the table URL to open externally instead.
+    In-terminal agents can also play at the table as you, through the
+    `poker_*` MCP tools below.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in
@@ -85,6 +87,16 @@ Surfaced to in-terminal agents as `mcp__boss__arcade_*`:
 - `arcade_wordle_state` / `arcade_wordle_guess` — read and play today's live
   Wordle board; the agent's guesses flip on the user's screen and burn the
   user's shared daily board, so agents should only play when asked.
+- `poker_lobby` / `poker_state` / `poker_sit` / `poker_leave` / `poker_act` —
+  play live multiplayer poker AS the signed-in user. Auth is the console-SSO
+  flow (mint a one-time code via `poker_sso_code`, exchange + verify for a
+  short-lived access token; re-run on expiry), and the moves go straight to the
+  poker edge function over HTTP — no browser needed to play. The first poker
+  tool call surfaces the Poker screen in an Arcade tab (opening one if needed)
+  and mutating tools re-surface it, so the user watches the agent's play live
+  via the web app's realtime updates. Etiquette is baked into the tool
+  descriptions: act only when `poker_state` says `yourTurn`, and never sit at
+  a table unless the user asked to play.
 
 The home screen also shows an "On the board" strip (top-3 podium, player count,
 latest score per game) so the picker itself advertises the competition.

@@ -10,6 +10,8 @@ import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.poker.PokerAgentService
+import ai.rever.boss.plugin.dynamic.arcade.poker.PokerViewModel
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -26,6 +28,8 @@ interface ArcadeGameHost {
     fun showWordle(): WordleViewModel
 
     fun showBattleship(): BattleshipViewModel
+
+    fun showPoker(): PokerViewModel
 }
 
 /**
@@ -75,6 +79,12 @@ class ArcadeServices(
     /** The most recently opened Arcade tab; lets MCP tools surface the board. */
     @Volatile
     var activeArcadeTab: ArcadeGameHost? = null
+
+    /**
+     * HTTP client the poker MCP tools play through, as the signed-in user (console SSO).
+     * Independent of any tab: the embedded web app is only the spectator view.
+     */
+    val pokerAgent: PokerAgentService = PokerAgentService(supabase)
 }
 
 object ArcadeDynamicPlugin : DynamicPlugin {
