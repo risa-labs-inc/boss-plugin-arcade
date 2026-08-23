@@ -28,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,16 +77,16 @@ fun LeaderboardOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ArcadeColors.Ink.copy(alpha = 0.25f))
+            .background(CasinoColors.Scrim)
             .plainClickable(onClose),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
                 .width(340.dp)
-                .shadow(12.dp, RoundedCornerShape(18.dp))
+                .neonSign(CasinoColors.Gold, cornerRadius = 18.dp, lit = 0.35f)
                 .clip(RoundedCornerShape(18.dp))
-                .background(ArcadeColors.Chip)
+                .background(CasinoColors.Panel)
                 .plainClickable {}
                 .padding(20.dp),
         ) {
@@ -96,14 +95,14 @@ fun LeaderboardOverlay(
                     "Leaderboard — $game",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = ArcadeColors.Ink,
+                    color = CasinoColors.TextBright,
                     modifier = Modifier.weight(1f),
                 )
                 Box(Modifier.clip(RoundedCornerShape(8.dp)).plainClickable { refreshKey++ }.padding(4.dp)) {
-                    Icon(Icons.Outlined.Refresh, "Refresh", tint = ArcadeColors.InkSoft)
+                    Icon(Icons.Outlined.Refresh, "Refresh", tint = CasinoColors.TextSoft)
                 }
                 Box(Modifier.clip(RoundedCornerShape(8.dp)).plainClickable(onClose).padding(4.dp)) {
-                    Icon(Icons.Outlined.Close, "Close", tint = ArcadeColors.InkSoft)
+                    Icon(Icons.Outlined.Close, "Close", tint = CasinoColors.TextSoft)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -119,7 +118,7 @@ fun LeaderboardOverlay(
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(
-                        color = ArcadeColors.Pink,
+                        color = CasinoColors.Gold,
                         modifier = Modifier.size(28.dp),
                         strokeWidth = 3.dp,
                     )
@@ -128,7 +127,7 @@ fun LeaderboardOverlay(
                 error != null -> Text(
                     error ?: "",
                     fontSize = 13.sp,
-                    color = ArcadeColors.InkSoft,
+                    color = CasinoColors.TextSoft,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
 
@@ -136,7 +135,7 @@ fun LeaderboardOverlay(
                     if (weekly) "No scores this week yet — the race is wide open!"
                     else "No scores yet — set the first one!",
                     fontSize = 13.sp,
-                    color = ArcadeColors.InkSoft,
+                    color = CasinoColors.TextSoft,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
 
@@ -156,7 +155,7 @@ fun LeaderboardOverlay(
                 Text(
                     "Sign in to submit your scores.",
                     fontSize = 11.sp,
-                    color = ArcadeColors.Muted,
+                    color = CasinoColors.TextMuted,
                 )
             }
         }
@@ -168,7 +167,7 @@ private fun PeriodTab(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) ArcadeColors.Pink else ArcadeColors.Cell)
+            .background(if (selected) CasinoColors.Gold else CasinoColors.PanelDeep)
             .plainClickable(onClick)
             .padding(horizontal = 12.dp, vertical = 5.dp),
     ) {
@@ -176,7 +175,7 @@ private fun PeriodTab(label: String, selected: Boolean, onClick: () -> Unit) {
             label,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = if (selected) androidx.compose.ui.graphics.Color.White else ArcadeColors.InkSoft,
+            color = if (selected) CasinoColors.PanelDeep else CasinoColors.TextSoft,
         )
     }
 }
@@ -187,7 +186,7 @@ private fun LeaderboardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(if (isMe) ArcadeColors.Pink.copy(alpha = 0.10f) else ArcadeColors.Chip)
+            .background(if (isMe) CasinoColors.Gold.copy(alpha = 0.12f) else CasinoColors.Panel)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -195,14 +194,14 @@ private fun LeaderboardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
             "$rank",
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = ArcadeColors.Muted,
+            color = CasinoColors.TextMuted,
             modifier = Modifier.width(24.dp),
         )
         Text(
             (entry.displayName ?: "Player") + if (isMe) " (you)" else "",
             fontSize = 13.sp,
             fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
-            color = ArcadeColors.Ink,
+            color = CasinoColors.TextBright,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -211,7 +210,7 @@ private fun LeaderboardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
             "%,d".format(entry.bestScore),
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = ArcadeColors.Ink,
+            color = CasinoColors.TextBright,
         )
     }
 }

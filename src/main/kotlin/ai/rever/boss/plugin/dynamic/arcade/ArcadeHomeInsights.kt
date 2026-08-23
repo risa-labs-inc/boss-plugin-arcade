@@ -1,6 +1,7 @@
 package ai.rever.boss.plugin.dynamic.arcade
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,7 +84,7 @@ fun ArcadeHomeInsights(
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.6.sp,
-            color = ArcadeColors.Muted,
+            color = CasinoColors.GoldDim,
         )
         Spacer(Modifier.width(12.dp))
         PeriodChip("All-time", selected = !weekly) { weekly = false }
@@ -95,7 +96,7 @@ fun ArcadeHomeInsights(
         Text(
             "No scores this week yet — the race is wide open!",
             fontSize = 12.sp,
-            color = ArcadeColors.InkSoft,
+            color = CasinoColors.TextSoft,
         )
     } else {
         FlowRow(
@@ -125,7 +126,8 @@ private fun BattleshipStandingsCard(standings: List<Standing>, myUserId: String?
         modifier = Modifier
             .width(224.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(ArcadeColors.Chip.copy(alpha = 0.75f))
+            .background(CasinoColors.Panel.copy(alpha = 0.92f))
+            .border(1.dp, CasinoColors.GoldDim.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
             .plainClickable { expanded = !expanded }
             .padding(14.dp),
     ) {
@@ -134,14 +136,14 @@ private fun BattleshipStandingsCard(standings: List<Standing>, myUserId: String?
                 "Battleship",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = ArcadeColors.Ink,
+                color = CasinoColors.TextBright,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 if (standings.size >= 15) "15+ players" else "${standings.size} player" +
                     if (standings.size == 1) "" else "s",
                 fontSize = 10.sp,
-                color = ArcadeColors.Muted,
+                color = CasinoColors.TextMuted,
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -157,7 +159,7 @@ private fun BattleshipStandingsCard(standings: List<Standing>, myUserId: String?
                     if (i < 3) medals[i] else "${i + 1}.",
                     fontSize = if (i < 3) 12.sp else 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ArcadeColors.Muted,
+                    color = CasinoColors.TextMuted,
                     modifier = Modifier.width(22.dp),
                 )
                 Spacer(Modifier.width(4.dp))
@@ -165,7 +167,7 @@ private fun BattleshipStandingsCard(standings: List<Standing>, myUserId: String?
                     row.displayName + if (isMe) " (you)" else "",
                     fontSize = 12.sp,
                     fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
-                    color = ArcadeColors.Ink,
+                    color = CasinoColors.TextBright,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -174,19 +176,19 @@ private fun BattleshipStandingsCard(standings: List<Standing>, myUserId: String?
                     "${row.wins}W · ${row.losses}L",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = ArcadeColors.Ink,
+                    color = CasinoColors.TextBright,
                 )
             }
         }
         Spacer(Modifier.height(6.dp))
-        Text("Won matches · all-time", fontSize = 10.sp, color = ArcadeColors.Muted)
+        Text("Won matches · all-time", fontSize = 10.sp, color = CasinoColors.TextMuted)
         if (standings.size > 3) {
             Spacer(Modifier.height(6.dp))
             Text(
                 if (expanded) "▴ Show less" else "▾ Top ${standings.size}",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = ArcadeColors.Pink,
+                color = CasinoColors.Gold,
             )
         }
     }
@@ -197,7 +199,7 @@ private fun PeriodChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) ArcadeColors.Pink else ArcadeColors.Cell)
+            .background(if (selected) CasinoColors.Gold else CasinoColors.PanelDeep)
             .plainClickable(onClick)
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
@@ -205,7 +207,7 @@ private fun PeriodChip(label: String, selected: Boolean, onClick: () -> Unit) {
             label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = if (selected) androidx.compose.ui.graphics.Color.White else ArcadeColors.InkSoft,
+            color = if (selected) CasinoColors.PanelDeep else CasinoColors.TextSoft,
         )
     }
 }
@@ -217,7 +219,8 @@ private fun GameBoardCard(board: GameBoard, myUserId: String?) {
         modifier = Modifier
             .width(224.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(ArcadeColors.Chip.copy(alpha = 0.75f))
+            .background(CasinoColors.Panel.copy(alpha = 0.92f))
+            .border(1.dp, CasinoColors.GoldDim.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
             .plainClickable { expanded = !expanded }
             .padding(14.dp),
     ) {
@@ -226,14 +229,14 @@ private fun GameBoardCard(board: GameBoard, myUserId: String?) {
                 board.title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = ArcadeColors.Ink,
+                color = CasinoColors.TextBright,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 if (board.entries.size >= 15) "15+ players" else "${board.entries.size} player" +
                     if (board.entries.size == 1) "" else "s",
                 fontSize = 10.sp,
-                color = ArcadeColors.Muted,
+                color = CasinoColors.TextMuted,
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -247,7 +250,7 @@ private fun GameBoardCard(board: GameBoard, myUserId: String?) {
         }
         latestActivity(board.entries)?.let { note ->
             Spacer(Modifier.height(6.dp))
-            Text(note, fontSize = 10.sp, color = ArcadeColors.Muted)
+            Text(note, fontSize = 10.sp, color = CasinoColors.TextMuted)
         }
         if (board.entries.size > 3) {
             Spacer(Modifier.height(6.dp))
@@ -255,7 +258,7 @@ private fun GameBoardCard(board: GameBoard, myUserId: String?) {
                 if (expanded) "▴ Show less" else "▾ Top ${board.entries.size}",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = ArcadeColors.Pink,
+                color = CasinoColors.Gold,
             )
         }
     }
@@ -272,7 +275,7 @@ private fun BoardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
             if (rank <= 3) medals[rank - 1] else "$rank.",
             fontSize = if (rank <= 3) 12.sp else 11.sp,
             fontWeight = FontWeight.Bold,
-            color = ArcadeColors.Muted,
+            color = CasinoColors.TextMuted,
             modifier = Modifier.width(22.dp),
         )
         Spacer(Modifier.width(4.dp))
@@ -280,7 +283,7 @@ private fun BoardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
             (entry.displayName ?: "Player") + if (isMe) " (you)" else "",
             fontSize = 12.sp,
             fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
-            color = ArcadeColors.Ink,
+            color = CasinoColors.TextBright,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -289,7 +292,7 @@ private fun BoardRow(rank: Int, entry: LeaderboardEntry, isMe: Boolean) {
             "%,d".format(entry.bestScore),
             fontSize = 12.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = ArcadeColors.Ink,
+            color = CasinoColors.TextBright,
         )
     }
 }

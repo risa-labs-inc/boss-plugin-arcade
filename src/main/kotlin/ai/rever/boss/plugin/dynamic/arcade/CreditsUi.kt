@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,8 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,36 +50,74 @@ import kotlinx.coroutines.launch
 private fun creditsLabel(value: Long): String = "%,d ${CreditsService.GLYPH}".format(value)
 
 /**
- * Balance pill for the home screen. Renders nothing while credits are
- * unavailable/degraded — the home page stays clean and every game stays free.
+ * Balance chip for the home screen, drawn as an actual casino chip: circular,
+ * gold-rimmed with alternating edge dashes, balance in the middle. Renders
+ * nothing while credits are unavailable/degraded — the home page stays clean
+ * and every game stays free.
  */
 @Composable
 fun CreditsChip(credits: CreditsService, onRequest: () -> Unit) {
     val snap by credits.snapshot.collectAsState()
     val s = snap ?: return
-    Column(
+    val pending = s.pendingRequest
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(ArcadeColors.Chip)
-            .border(2.dp, ArcadeColors.Frame, RoundedCornerShape(999.dp))
-            .plainClickable(onRequest)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .size(92.dp)
+            .drawBehind {
+                val radius = size.minDimension / 2f
+                val rim = 5.dp.toPx()
+                val center = Offset(size.width / 2f, size.height / 2f)
+                // Faint gold halo so the chip reads as lit on the dark floor.
+                drawCircle(CasinoColors.Gold.copy(alpha = 0.14f), radius = radius + 2.dp.toPx(), center = center)
+                drawCircle(CasinoColors.Gold.copy(alpha = 0.05f), radius = radius + 5.dp.toPx(), center = center)
+                // Chip body + rim base.
+                drawCircle(CasinoColors.PanelDeep, radius = radius, center = center)
+                drawCircle(
+                    CasinoColors.GoldDim,
+                    radius = radius - rim / 2f,
+                    center = center,
+                    style = Stroke(width = rim),
+                )
+                // Edge dashes: 8 bright segments alternating with the dim rim.
+                val inset = rim / 2f
+                for (i in 0 until 8) {
+                    drawArc(
+                        color = CasinoColors.GoldBright,
+                        startAngle = i * 45f + 11.25f,
+                        sweepAngle = 22.5f,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = Size(size.width - inset * 2f, size.height - inset * 2f),
+                        style = Stroke(width = rim),
+                    )
+                }
+                // Thin inner ring separating rim from face.
+                drawCircle(
+                    CasinoColors.Gold.copy(alpha = 0.35f),
+                    radius = radius - rim - 2.dp.toPx(),
+                    center = center,
+                    style = Stroke(width = 1.dp.toPx()),
+                )
+            }
+            .plainClickable(onRequest),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            creditsLabel(s.balance),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = ArcadeColors.Ink,
-        )
-        Text(
-            when (val pending = s.pendingRequest) {
-                null -> "${"%,d".format(s.weeklyFloor)} weekly · tap to request more"
-                else -> "request pending · ${creditsLabel(pending.amount)}"
-            },
-            fontSize = 10.sp,
-            color = if (s.pendingRequest == null) ArcadeColors.Muted else ArcadeColors.PinkDeep,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                creditsLabel(s.balance),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = CasinoColors.TextBright,
+                maxLines = 1,
+            )
+            Text(
+                if (pending == null) "tap to top up" else "pending ${"%,d".format(pending.amount)}",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (pending == null) CasinoColors.TextMuted else CasinoColors.Alert,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -97,16 +138,16 @@ fun InsufficientCreditsCard(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ArcadeColors.Ink.copy(alpha = 0.25f))
+            .background(CasinoColors.Scrim)
             .plainClickable(onDismiss),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
                 .width(320.dp)
-                .shadow(12.dp, RoundedCornerShape(18.dp))
+                .neonSign(CasinoColors.Gold, cornerRadius = 18.dp, lit = 0.35f)
                 .clip(RoundedCornerShape(18.dp))
-                .background(ArcadeColors.Chip)
+                .background(CasinoColors.Panel)
                 .plainClickable {}
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -115,7 +156,7 @@ fun InsufficientCreditsCard(
                 "Out of credits",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = ArcadeColors.Ink,
+                color = CasinoColors.TextBright,
             )
             Spacer(Modifier.height(10.dp))
             Text(
@@ -123,7 +164,7 @@ fun InsufficientCreditsCard(
                     "${creditsLabel(blocked.balance)}. Credits refill to the weekly floor " +
                     "every Monday, or you can ask an admin for a top-up.",
                 fontSize = 13.sp,
-                color = ArcadeColors.InkSoft,
+                color = CasinoColors.TextSoft,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(16.dp))
@@ -132,14 +173,14 @@ fun InsufficientCreditsCard(
                     "Request pending: ${creditsLabel(pending.amount)}",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ArcadeColors.PinkDeep,
+                    color = CasinoColors.Alert,
                 )
                 Spacer(Modifier.height(12.dp))
-                ArcadeGhostButton("Close", onClick = onDismiss)
+                CasinoGhostButton("Close", onClick = onDismiss)
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ArcadePrimaryButton("Request credits", onClick = onRequest)
-                    ArcadeGhostButton("Not now", onClick = onDismiss)
+                    CasinoPrimaryButton("Request credits", onClick = onRequest)
+                    CasinoGhostButton("Not now", onClick = onDismiss)
                 }
             }
         }
@@ -158,16 +199,16 @@ fun RequestCreditsDialog(credits: CreditsService, onClose: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ArcadeColors.Ink.copy(alpha = 0.25f))
+            .background(CasinoColors.Scrim)
             .plainClickable(onClose),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
                 .width(320.dp)
-                .shadow(12.dp, RoundedCornerShape(18.dp))
+                .neonSign(CasinoColors.Gold, cornerRadius = 18.dp, lit = 0.35f)
                 .clip(RoundedCornerShape(18.dp))
-                .background(ArcadeColors.Chip)
+                .background(CasinoColors.Panel)
                 .plainClickable {}
                 .padding(24.dp),
         ) {
@@ -175,13 +216,13 @@ fun RequestCreditsDialog(credits: CreditsService, onClose: () -> Unit) {
                 "Request credits",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = ArcadeColors.Ink,
+                color = CasinoColors.TextBright,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 "An admin approves top-ups inside the Arcade.",
                 fontSize = 12.sp,
-                color = ArcadeColors.Muted,
+                color = CasinoColors.TextMuted,
             )
             Spacer(Modifier.height(14.dp))
             CreditsFieldLabel("Amount")
@@ -195,15 +236,15 @@ fun RequestCreditsDialog(credits: CreditsService, onClose: () -> Unit) {
             val message = error
             if (message != null) {
                 Spacer(Modifier.height(8.dp))
-                Text(message, fontSize = 12.sp, color = ArcadeColors.PinkDeep)
+                Text(message, fontSize = 12.sp, color = CasinoColors.Alert)
             }
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ArcadePrimaryButton(
+                CasinoPrimaryButton(
                     text = if (busy) "Sending…" else "Send request",
                     enabled = !busy && (amount.toLongOrNull() ?: 0L) > 0L,
                     onClick = {
-                        val value = amount.toLongOrNull() ?: return@ArcadePrimaryButton
+                        val value = amount.toLongOrNull() ?: return@CasinoPrimaryButton
                         busy = true
                         error = null
                         scope.launch {
@@ -221,7 +262,7 @@ fun RequestCreditsDialog(credits: CreditsService, onClose: () -> Unit) {
                         }
                     },
                 )
-                ArcadeGhostButton("Cancel", onClick = onClose, enabled = !busy)
+                CasinoGhostButton("Cancel", onClick = onClose, enabled = !busy)
             }
         }
     }
@@ -229,7 +270,7 @@ fun RequestCreditsDialog(credits: CreditsService, onClose: () -> Unit) {
 
 @Composable
 private fun CreditsFieldLabel(text: String) {
-    Text(text, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ArcadeColors.InkSoft)
+    Text(text, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CasinoColors.TextSoft)
     Spacer(Modifier.height(4.dp))
 }
 
@@ -246,13 +287,13 @@ private fun CreditsTextField(
         textStyle = TextStyle(
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = ArcadeColors.Ink,
+            color = CasinoColors.TextBright,
         ),
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(ArcadeColors.Cell)
-            .border(2.dp, ArcadeColors.Frame, RoundedCornerShape(10.dp))
+            .background(CasinoColors.PanelDeep)
+            .border(1.5.dp, CasinoColors.GoldDim.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
     )
 }
@@ -283,7 +324,7 @@ fun AdminCreditsOverlay(credits: CreditsService, onClose: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ArcadeColors.Ink.copy(alpha = 0.25f))
+            .background(CasinoColors.Scrim)
             .plainClickable(onClose),
         contentAlignment = Alignment.Center,
     ) {
@@ -291,9 +332,9 @@ fun AdminCreditsOverlay(credits: CreditsService, onClose: () -> Unit) {
             modifier = Modifier
                 .width(430.dp)
                 .heightIn(max = 520.dp)
-                .shadow(12.dp, RoundedCornerShape(18.dp))
+                .neonSign(CasinoColors.Gold, cornerRadius = 18.dp, lit = 0.35f)
                 .clip(RoundedCornerShape(18.dp))
-                .background(ArcadeColors.Chip)
+                .background(CasinoColors.Panel)
                 .plainClickable {}
                 .padding(20.dp),
         ) {
@@ -302,14 +343,14 @@ fun AdminCreditsOverlay(credits: CreditsService, onClose: () -> Unit) {
                     "Credit requests",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = ArcadeColors.Ink,
+                    color = CasinoColors.TextBright,
                     modifier = Modifier.weight(1f),
                 )
                 Box(Modifier.clip(RoundedCornerShape(8.dp)).plainClickable { refreshKey++ }.padding(4.dp)) {
-                    Icon(Icons.Outlined.Refresh, "Refresh", tint = ArcadeColors.InkSoft)
+                    Icon(Icons.Outlined.Refresh, "Refresh", tint = CasinoColors.TextSoft)
                 }
                 Box(Modifier.clip(RoundedCornerShape(8.dp)).plainClickable(onClose).padding(4.dp)) {
-                    Icon(Icons.Outlined.Close, "Close", tint = ArcadeColors.InkSoft)
+                    Icon(Icons.Outlined.Close, "Close", tint = CasinoColors.TextSoft)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -319,7 +360,7 @@ fun AdminCreditsOverlay(credits: CreditsService, onClose: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(
-                        color = ArcadeColors.Pink,
+                        color = CasinoColors.Gold,
                         modifier = Modifier.width(28.dp).height(28.dp),
                         strokeWidth = 3.dp,
                     )
@@ -328,14 +369,14 @@ fun AdminCreditsOverlay(credits: CreditsService, onClose: () -> Unit) {
                 error != null -> Text(
                     error ?: "",
                     fontSize = 13.sp,
-                    color = ArcadeColors.InkSoft,
+                    color = CasinoColors.TextSoft,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
 
                 rows.isEmpty() -> Text(
                     "No requests — everyone is flush.",
                     fontSize = 13.sp,
-                    color = ArcadeColors.InkSoft,
+                    color = CasinoColors.TextSoft,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
 
@@ -373,7 +414,7 @@ private fun AdminRequestRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (pending) ArcadeColors.Pink.copy(alpha = 0.08f) else ArcadeColors.Cell)
+            .background(if (pending) CasinoColors.Gold.copy(alpha = 0.10f) else CasinoColors.PanelDeep)
             .padding(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -381,7 +422,7 @@ private fun AdminRequestRow(
                 row.displayName ?: "Player",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = ArcadeColors.Ink,
+                color = CasinoColors.TextBright,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -390,14 +431,14 @@ private fun AdminRequestRow(
                 if (pending) "wants ${creditsLabel(row.amount)}" else row.status,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (pending) ArcadeColors.PinkDeep else ArcadeColors.Muted,
+                color = if (pending) CasinoColors.Gold else CasinoColors.TextMuted,
             )
         }
         Text(
             "balance ${creditsLabel(row.balance)}" +
                 (row.note?.takeIf { it.isNotBlank() }?.let { " · “$it”" } ?: ""),
             fontSize = 11.sp,
-            color = ArcadeColors.Muted,
+            color = CasinoColors.TextMuted,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -412,12 +453,12 @@ private fun AdminRequestRow(
                     onValueChange = { text -> amount = text.filter { it.isDigit() }.take(7) },
                     modifier = Modifier.width(90.dp),
                 )
-                ArcadePrimaryButton(
+                CasinoPrimaryButton(
                     text = "Approve",
                     enabled = (amount.toLongOrNull() ?: 0L) > 0L,
                     onClick = { onResolve(true, amount.toLongOrNull()) },
                 )
-                ArcadeGhostButton("Deny", onClick = { onResolve(false, null) })
+                CasinoGhostButton("Deny", onClick = { onResolve(false, null) })
             }
         }
     }
