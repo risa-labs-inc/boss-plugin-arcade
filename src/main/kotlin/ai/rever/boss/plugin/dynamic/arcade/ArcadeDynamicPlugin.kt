@@ -5,7 +5,6 @@ import ai.rever.boss.plugin.api.DynamicPlugin
 import ai.rever.boss.plugin.api.PluginContext
 import ai.rever.boss.plugin.api.PluginStorageProvider
 import ai.rever.boss.plugin.api.SplitViewOperations
-import ai.rever.boss.plugin.browser.BrowserService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
@@ -39,7 +38,15 @@ class ArcadeServices(
     val leaderboard: LeaderboardService,
     val battleship: BattleshipService,
     val splitView: SplitViewOperations?,
-    val browserService: BrowserService?,
+    /**
+     * The host's BrowserService, deliberately typed as Any?. Older BOSS
+     * consoles bundle a plugin-api without the browser package; naming the
+     * type here (or reading context.browserService unguarded) is a
+     * NoSuchMethodError at register() that kills the WHOLE arcade on them
+     * (bit us in 0.1.22). Poker casts it back with `as?` behind a null check,
+     * so browser classes only ever resolve on hosts that have them.
+     */
+    val browserServiceRaw: Any?,
 ) {
     /**
      * Resolved on every use, never cached. The host watchdog restarts a plugin
@@ -94,7 +101,8 @@ object ArcadeDynamicPlugin : DynamicPlugin {
                 context.authDataProvider,
             ),
             splitView = context.splitViewOperations,
-            browserService = context.browserService,
+            // Throwable-catching on purpose: NoSuchMethodError on pre-browser-API consoles.
+            browserServiceRaw = runCatching { context.browserService }.getOrNull(),
         )
         this.services = services
 

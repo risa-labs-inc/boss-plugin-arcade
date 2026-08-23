@@ -2,6 +2,7 @@ package ai.rever.boss.plugin.dynamic.arcade.poker
 
 import ai.rever.boss.plugin.browser.BrowserConfig
 import ai.rever.boss.plugin.browser.BrowserHandle
+import ai.rever.boss.plugin.browser.BrowserService
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +44,16 @@ class PokerViewModel(
         if (creating || handle?.isValid == true) return
         handle?.dispose()
         handle = null
-        val service = services.browserService
+        // Raw is null on consoles whose plugin-api predates the browser package
+        // (as well as when the host has no JxBrowser); the `as?` never resolves
+        // BrowserService on a null receiver, so old hosts never load the class.
+        val raw = services.browserServiceRaw
+        if (raw == null) {
+            phase = Phase.UNAVAILABLE
+            unavailableReason = "Playing inside BOSS needs a newer BOSS console version."
+            return
+        }
+        val service = runCatching { raw as? BrowserService }.getOrNull()
         if (service == null || !service.isAvailable()) {
             phase = Phase.UNAVAILABLE
             unavailableReason = "BOSS's embedded browser isn't available on this machine."
