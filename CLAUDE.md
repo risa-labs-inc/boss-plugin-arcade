@@ -137,6 +137,20 @@ failure block a game. Costs shown before the first charge are the embedded
 `DEFAULT_COST`; the server's `cost` field overrides per game once a charge
 answers. `arcade_is_admin` returns a bare boolean, not JSON.
 
+**Casino ambience** (`AmbienceSynth.kt` + `CasinoAmbience.kt`): procedurally
+synthesized casino-floor audio — a warm chord pad, a lowpassed room murmur and
+sparse chip-clink/card-riffle accents, all streamed in small buffers (no audio
+files). DEFAULT OFF; the opt-in is the speaker toggle beside the credits chip,
+persisted under `ambience.enabled`. One `CasinoAmbiencePlayer` lives on
+`ArcadeServices` (plugin level) and playback demand is a refcounted set of tabs
+whose HOME screen is currently composed — several open tabs can never
+double-play, and entering any game fades the ambience out (~3s fade-in, ~0.9s
+fade-out; games are silent by design, poker's web app has its own audio). Every
+javax.sound call is runCatching-wrapped: a missing/busy device flips the toggle
+to a muted "unavailable" state (a click retries) and never throws into the
+host. The audio thread is a daemon thread, not a pluginScope coroutine, so the
+watchdog's scope swap can't strand it; `dispose()` stops it and closes the line.
+
 Battleship is the odd one out: async head-to-head rather than a scored run, so
 it has no leaderboard entry and its own `arcade_bs_standings` (W/L) instead.
 **The server is the authority and the client is assumed hostile** — fleets are

@@ -52,6 +52,7 @@ fun ArcadeHomeScreen(
     leaderboard: LeaderboardService,
     battleshipService: BattleshipService,
     credits: CreditsService,
+    ambience: CasinoAmbiencePlayer,
     onRequestCredits: () -> Unit,
     onOpenAdmin: () -> Unit,
     onPlay2048: () -> Unit,
@@ -105,6 +106,7 @@ fun ArcadeHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CreditsChip(credits, onRequest = onRequestCredits)
+                AmbienceToggle(ambience)
                 if (isAdmin) CasinoGhostButton("Admin", onClick = onOpenAdmin)
             }
             Spacer(Modifier.height(20.dp))

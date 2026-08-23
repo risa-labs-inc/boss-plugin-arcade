@@ -23,6 +23,7 @@ import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,6 +112,9 @@ class ArcadeTabComponent(
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
             if (services.activeWordle === wordle) services.activeWordle = null
             if (services.activeArcadeTab === this) services.activeArcadeTab = null
+            // Belt and braces with the home screen's DisposableEffect (idempotent
+            // set removal): whichever fires, this tab stops demanding ambience.
+            services.ambience.homeHidden(this)
             componentScope.cancel()
         }
     }
@@ -175,24 +179,35 @@ class ArcadeTabComponent(
     override fun Content() {
         ArcadeBackground {
             when (screen) {
-                ArcadeScreen.Home -> ArcadeHomeScreen(
-                    leaderboard = services.leaderboard,
-                    battleshipService = services.battleship,
-                    credits = services.credits,
-                    onRequestCredits = { requestDialogOpen = true },
-                    onOpenAdmin = { adminPanelOpen = true },
-                    onPlay2048 = { screen = ArcadeScreen.Game2048 },
-                    onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
-                    onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
-                    onPlayTypingSprint = { screen = ArcadeScreen.TypingSprint },
-                    onPlayWordle = { screen = ArcadeScreen.Wordle },
-                    onPlayBattleship = { screen = ArcadeScreen.Battleship },
-                    onPlayPoker = { screen = ArcadeScreen.Poker },
-                    // Created here rather than on first play: the badge is the
-                    // point, and a lazily-created VM would read 0 until you had
-                    // already opened the game you were meant to be nudged into.
-                    battleshipWaiting = battleship().actionableCount,
-                )
+                ArcadeScreen.Home -> {
+                    // Ambience plays ONLY while a home screen is on show: entering
+                    // composition registers this tab's demand, leaving it (navigating
+                    // into a game, closing the tab) fades the ambience out. Games are
+                    // silent by design — poker's web app carries its own audio.
+                    DisposableEffect(Unit) {
+                        services.ambience.homeShown(this@ArcadeTabComponent)
+                        onDispose { services.ambience.homeHidden(this@ArcadeTabComponent) }
+                    }
+                    ArcadeHomeScreen(
+                        leaderboard = services.leaderboard,
+                        battleshipService = services.battleship,
+                        credits = services.credits,
+                        ambience = services.ambience,
+                        onRequestCredits = { requestDialogOpen = true },
+                        onOpenAdmin = { adminPanelOpen = true },
+                        onPlay2048 = { screen = ArcadeScreen.Game2048 },
+                        onPlayMirrorDash = { screen = ArcadeScreen.MirrorDash },
+                        onPlaySkyStack = { screen = ArcadeScreen.SkyStack },
+                        onPlayTypingSprint = { screen = ArcadeScreen.TypingSprint },
+                        onPlayWordle = { screen = ArcadeScreen.Wordle },
+                        onPlayBattleship = { screen = ArcadeScreen.Battleship },
+                        onPlayPoker = { screen = ArcadeScreen.Poker },
+                        // Created here rather than on first play: the badge is the
+                        // point, and a lazily-created VM would read 0 until you had
+                        // already opened the game you were meant to be nudged into.
+                        battleshipWaiting = battleship().actionableCount,
+                    )
+                }
                 ArcadeScreen.Game2048 -> Game2048Screen(
                     viewModel = game2048(),
                     leaderboard = services.leaderboard,

@@ -86,6 +86,13 @@ class ArcadeServices(
      * Independent of any tab: the embedded web app is only the spectator view.
      */
     val pokerAgent: PokerAgentService = PokerAgentService(supabase)
+
+    /**
+     * The one shared casino-ambience player. Plugin-level on purpose: several
+     * open Arcade tabs share it (home-visibility is refcounted inside), so
+     * ambience can never double-play.
+     */
+    val ambience: CasinoAmbiencePlayer = CasinoAmbiencePlayer(storage, scopeProvider)
 }
 
 object ArcadeDynamicPlugin : DynamicPlugin {
@@ -131,6 +138,9 @@ object ArcadeDynamicPlugin : DynamicPlugin {
 
         context.registerMcpToolProvider(ArcadeMcpTools(pluginId, services))
 
+        // Restore the ambience opt-in (default off; a storage failure leaves it off).
+        services.ambience.loadPersisted()
+
         // Watch for Battleship games waiting on this player. Deliberately here
         // and not in the tab: this has to work when no Arcade tab is open, which
         // is precisely when a challenge would otherwise go unnoticed.
@@ -161,6 +171,8 @@ object ArcadeDynamicPlugin : DynamicPlugin {
     override fun dispose() {
         notifierJob?.cancel()
         notifierJob = null
+        // Stops the ambience thread and closes the audio line.
+        services?.ambience?.shutdown()
         services = null
     }
 }
