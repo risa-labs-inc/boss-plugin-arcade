@@ -41,6 +41,20 @@ alter table public.arcade_scores add constraint arcade_scores_score_check
 create index if not exists arcade_scores_event_created_idx
   on public.arcade_scores (event, created_at desc);
 
+-- The read policy, repeated from arcade_schema.sql because THIS is the file an
+-- already-deployed project runs. Without it production keeps
+-- `arcade_scores_read_all using (true)`: every other limb of the visibility fix
+-- lands and the 29k-row per-user activity feed stays readable by every account
+-- in the project. Idempotent - both drops are unconditional.
+--
+-- Depends on public.arcade_visible_users (arcade_scope.sql), so that file and
+-- the platform migration it aliases must be applied before this one.
+drop policy if exists arcade_scores_read_all on public.arcade_scores;
+drop policy if exists arcade_scores_read_visible on public.arcade_scores;
+create policy arcade_scores_read_visible on public.arcade_scores
+  for select to authenticated
+  using (user_id in (select vu from public.arcade_visible_users() vu));
+
 -- Old 2-arg overload must go or PostgREST calls become ambiguous.
 drop function if exists public.arcade_submit_score(text, integer);
 create or replace function public.arcade_submit_score(
@@ -109,15 +123,16 @@ as $$
   )
   select
     b.user_id,
-    coalesce(
-      u.raw_user_meta_data ->> 'full_name',
-      u.raw_user_meta_data ->> 'name',
-      split_part(u.email, '@', 1)
-    ) as display_name,
+    public.arcade_display_name(b.user_id) as display_name,
     b.best_score,
     b.achieved_at
   from best b
-  join auth.users u on u.id = b.user_id
+  -- The visibility rule lives in arcade_scope.sql. Do not inline a subset of
+  -- it here: this board is one of five sites that ask the same question, and
+  -- they drifted apart last time. The set form, not arcade_may_see(b.user_id),
+  -- because a per-row qual on the DISTINCT ON key is pushed below the dedup
+  -- and then runs once per score row instead of once per player.
+  where b.user_id in (select vu from public.arcade_visible_users() vu)
   order by b.best_score desc, b.achieved_at asc
   limit least(greatest(coalesce(p_limit, 10), 1), 50);
 $$;
@@ -155,11 +170,11 @@ where event <> 'legacy'
   and game <> 'arcade'
 group by game;
 
-revoke all on function public.arcade_leaderboard(text, integer, timestamptz) from public;
+revoke all on function public.arcade_leaderboard(text, integer, timestamptz) from public, anon;
 grant execute on function public.arcade_leaderboard(text, integer, timestamptz) to authenticated;
-revoke all on function public.arcade_submit_score(text, integer, text) from public;
+revoke all on function public.arcade_submit_score(text, integer, text) from public, anon;
 grant execute on function public.arcade_submit_score(text, integer, text) to authenticated;
-revoke all on function public.arcade_personal_best(text) from public;
+revoke all on function public.arcade_personal_best(text) from public, anon;
 grant execute on function public.arcade_personal_best(text) to authenticated;
 grant select on public.arcade_usage_daily to authenticated;
 grant select on public.arcade_overview to authenticated;
