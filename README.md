@@ -90,12 +90,51 @@ cost, handled inside the poker web app.
 
 ## One-time backend setup
 
-Apply `supabase/arcade_schema.sql` to the BOSS Supabase project (SQL editor or
-a migration). It creates `arcade_scores` (RLS: insert-own / read-authenticated)
-and three RPCs: `arcade_submit_score`, `arcade_personal_best`,
-`arcade_leaderboard`. The leaderboard function reads display names from
-`auth.users` (security definer); switch the join to your profiles table if
-preferred.
+Apply these to the BOSS Supabase project (SQL editor or a migration), in order.
+The order is load-bearing, not tidiness: with `check_function_bodies` at its
+default `on`, a file that calls a predicate the previous file has not created
+yet fails at CREATE time.
+
+0. **Prerequisite, and it lives in another repo:**
+   `BossConsole/supabase/migrations/20260908010000_org_visibility.sql`, which
+   defines `public.org_visible_users()`, `public.org_is_vetted()` and
+   `public.user_display_name()`. Arcade does not own the visibility rule - poker
+   shares it - so step 1 is only an alias over these and will not create
+   without them.
+1. `supabase/arcade_scope.sql` - Arcade's names for that rule
+   (`arcade_visible_users`, the set form every read path uses;
+   `arcade_may_see`, the single-target form for write paths;
+   `arcade_display_name`).
+2. `supabase/arcade_schema.sql` - `arcade_scores` (RLS: insert-own, and read
+   only rows for users the visibility rule accepts) plus
+   `arcade_submit_score`, `arcade_personal_best`, `arcade_leaderboard`.
+3. `supabase/arcade_battleship.sql` - matches, fleets, shots and the
+   `arcade_bs_*` RPCs.
+4. `supabase/arcade_grants_audit.sql` - run this LAST, and again after any
+   change to the files above. It takes EXECUTE away from `anon` and PUBLIC
+   across every `arcade_*` object, grants back only what the plugin calls, and
+   then proves it with two audit queries that must return no rows.
+
+An already-deployed project runs `supabase/arcade_events_migration.sql` in
+place of step 2; it carries the same read policy, for the same reason.
+
+Step 4 is not optional housekeeping. This project's default privileges grant
+EXECUTE on every new function in schema `public` to `anon`, so a SECURITY
+DEFINER function is callable by anyone holding the anon key from the moment it
+is created - and the anon key ships inside the public BossConsole repo. A
+`revoke ... from public` does not remove an explicit grant to `anon`.
+
+Leaderboards and the opponent picker show only players the caller shares a
+vetted organisation with, not everyone who has opened the Arcade. An account in
+no vetted organisation - which is what open self-signup produces - sees a board
+of one and an empty opponent picker. That is the intended outcome, and it is
+indistinguishable at the UI from having no colleagues yet.
+
+One consequence worth knowing before you read numbers off them: the
+`arcade_usage_daily` and `arcade_overview` views are `security_invoker`, so they
+inherit that same read policy. Queried as `authenticated` they now report the
+caller's visible slice, with nothing to distinguish that from the true total.
+For real totals query them as `postgres` or `service_role`, which bypass RLS.
 
 The credits economy needs its own RPCs (`arcade_my_credits`,
 `arcade_charge_run`, `arcade_request_credits`, `arcade_is_admin`,

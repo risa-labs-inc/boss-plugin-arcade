@@ -173,7 +173,15 @@ declare
 begin
   if me is null then raise exception 'not signed in'; end if;
   if p_opponent is null or p_opponent = me then raise exception 'pick someone else'; end if;
-  if not exists (select 1 from auth.users where id = p_opponent) then
+  -- The visibility rule. The old test was "this uuid exists in auth.users",
+  -- which let a stranger open a match with anyone whose id they guessed, and a
+  -- match discloses the opponent's name by design. The error text is shared
+  -- with the not-visible case on purpose: it must not be an enumeration oracle.
+  --
+  -- Deliberately NOT identical to arcade_players, which additionally requires
+  -- an arcade_scores row: you may challenge a visible org-mate who has never
+  -- opened the Arcade and so cannot appear in your own picker.
+  if not public.arcade_may_see(p_opponent) then
     raise exception 'no such player';
   end if;
   if not public.arcade_bs_validate_fleet(p_ships) then
@@ -372,10 +380,8 @@ as $$
   select
     m.id,
     case when m.player_a = auth.uid() then m.player_b else m.player_a end,
-    coalesce(
-      u.raw_user_meta_data ->> 'full_name',
-      u.raw_user_meta_data ->> 'name',
-      split_part(u.email, '@', 1)
+    public.arcade_display_name(
+      case when m.player_a = auth.uid() then m.player_b else m.player_a end
     ),
     m.status,
     m.player_a = auth.uid(),
@@ -387,8 +393,10 @@ as $$
     coalesce(m.winner_id = auth.uid(), false),
     m.updated_at
   from public.arcade_matches m
-  join auth.users u
-    on u.id = case when m.player_a = auth.uid() then m.player_b else m.player_a end
+  -- No arcade_may_see filter here, deliberately: a row exists only because a
+  -- match exists, and arcade_bs_challenge already applied the gate to create
+  -- it. Filtering again would hide a live game from a player whose org
+  -- membership changed mid-match.
   where auth.uid() in (m.player_a, m.player_b)
     and m.status <> 'declined'
   order by coalesce(m.turn_user_id = auth.uid(), false) desc, m.updated_at desc
@@ -427,13 +435,7 @@ begin
     'finished', m.status = 'finished',
     'i_am_challenger', m.player_a = me,
     'opponent_id', foe,
-    'opponent_name', (
-      select coalesce(
-        u.raw_user_meta_data ->> 'full_name',
-        u.raw_user_meta_data ->> 'name',
-        split_part(u.email, '@', 1)
-      ) from auth.users u where u.id = foe
-    ),
+    'opponent_name', public.arcade_display_name(foe),
     'my_fleet', coalesce(
       (select f.ships from public.arcade_battleship_fleets f
        where f.match_id = p_match and f.user_id = me),
@@ -467,7 +469,9 @@ begin
 end;
 $$;
 
--- Who you can challenge: anyone who has ever touched the Arcade.
+-- Who you can challenge: everyone the caller is allowed to see who has touched
+-- the Arcade. `<> auth.uid()` is NOT the rule - it was, and that is how this
+-- function came to publish the whole roster. The rule is arcade_visible_users.
 create or replace function public.arcade_players(p_limit integer default 50)
 returns table (user_id uuid, display_name text)
 language sql
@@ -475,16 +479,18 @@ stable
 security definer
 set search_path = public
 as $$
-  select distinct
-    u.id,
-    coalesce(
-      u.raw_user_meta_data ->> 'full_name',
-      u.raw_user_meta_data ->> 'name',
-      split_part(u.email, '@', 1)
-    )
-  from public.arcade_scores s
-  join auth.users u on u.id = s.user_id
-  where s.user_id <> auth.uid()
+  with played as (
+    -- Deduplicate BEFORE applying the rule: arcade_scores is ~29k rows for 45
+    -- players, and evaluating the rule per row cost 3.7s in the lobby.
+    select distinct s.user_id
+    from public.arcade_scores s
+    where s.user_id <> auth.uid()
+  )
+  select
+    p.user_id,
+    public.arcade_display_name(p.user_id)
+  from played p
+  where p.user_id in (select vu from public.arcade_visible_users() vu)
   order by 2
   limit least(greatest(coalesce(p_limit, 50), 1), 200);
 $$;
@@ -522,28 +528,24 @@ as $$
   )
   select
     t.uid,
-    coalesce(
-      u.raw_user_meta_data ->> 'full_name',
-      u.raw_user_meta_data ->> 'name',
-      split_part(u.email, '@', 1)
-    ),
+    public.arcade_display_name(t.uid),
     t.wins,
     t.losses,
     t.played
   from tally t
-  join auth.users u on u.id = t.uid
+  where t.uid in (select vu from public.arcade_visible_users() vu)
   order by t.wins desc, t.losses asc, t.played desc
   limit least(greatest(coalesce(p_limit, 20), 1), 50);
 $$;
 
-revoke all on function public.arcade_bs_challenge(uuid, jsonb) from public;
-revoke all on function public.arcade_bs_accept(uuid, jsonb) from public;
-revoke all on function public.arcade_bs_decline(uuid) from public;
-revoke all on function public.arcade_bs_fire(uuid, integer) from public;
-revoke all on function public.arcade_bs_my_matches() from public;
-revoke all on function public.arcade_bs_match_detail(uuid) from public;
-revoke all on function public.arcade_players(integer) from public;
-revoke all on function public.arcade_bs_standings(integer) from public;
+revoke all on function public.arcade_bs_challenge(uuid, jsonb) from public, anon;
+revoke all on function public.arcade_bs_accept(uuid, jsonb) from public, anon;
+revoke all on function public.arcade_bs_decline(uuid) from public, anon;
+revoke all on function public.arcade_bs_fire(uuid, integer) from public, anon;
+revoke all on function public.arcade_bs_my_matches() from public, anon;
+revoke all on function public.arcade_bs_match_detail(uuid) from public, anon;
+revoke all on function public.arcade_players(integer) from public, anon;
+revoke all on function public.arcade_bs_standings(integer) from public, anon;
 grant execute on function public.arcade_bs_challenge(uuid, jsonb) to authenticated;
 grant execute on function public.arcade_bs_accept(uuid, jsonb) to authenticated;
 grant execute on function public.arcade_bs_decline(uuid) to authenticated;

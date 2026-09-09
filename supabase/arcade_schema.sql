@@ -5,12 +5,21 @@
 -- deployed project gets there via arcade_events_migration.sql instead — that
 -- one preserves history and marks pre-existing rows 'legacy'.
 --
+-- REQUIRES arcade_scope.sql, applied first: arcade_leaderboard calls the
+-- arcade_visible_users and arcade_display_name predicates defined there.
+--
 -- Design notes:
--- * One row per telemetry event, not per run — see `event` below. Leaderboards
+-- * One row per telemetry event, not per run - see `event` below. Leaderboards
 --   take MAX(score) over the scoring events.
--- * RLS: players insert only their own rows; any authenticated user can read.
--- * arcade_leaderboard is SECURITY DEFINER only to read display names from
---   auth.users; adapt the join if you'd rather use a public profiles table.
+-- * RLS: players insert only their own rows, and read only rows for users
+--   arcade_visible_users accepts. Score rows carry no names - identity is
+--   disclosed exclusively through the definer functions below - but the same
+--   visibility rule governs both, from the same one place.
+-- * arcade_leaderboard is SECURITY DEFINER to reach auth.users for names. That
+--   makes it the disclosure boundary, so it must filter on arcade_visible_users;
+--   and the grant block at the bottom must name `anon` explicitly, because this
+--   project's default privileges hand EXECUTE to anon on every new function in
+--   schema public and `revoke ... from public` does not undo that.
 
 create table if not exists public.arcade_scores (
   id uuid primary key default gen_random_uuid(),
@@ -42,10 +51,17 @@ create policy arcade_scores_insert_own on public.arcade_scores
   for insert to authenticated
   with check (user_id = auth.uid());
 
+-- Read: only rows belonging to users the caller may see. This table carries no
+-- names, so it is not the disclosure boundary the definer functions are - but
+-- `using (true)` handed every account in the project a 29k-row, per-user
+-- activity feed keyed by uuid, and signup is open. Same rule as everywhere
+-- else, from the same one place. The definer leaderboards are unaffected: they
+-- run as the table's owner and so bypass RLS.
 drop policy if exists arcade_scores_read_all on public.arcade_scores;
-create policy arcade_scores_read_all on public.arcade_scores
+drop policy if exists arcade_scores_read_visible on public.arcade_scores;
+create policy arcade_scores_read_visible on public.arcade_scores
   for select to authenticated
-  using (true);
+  using (user_id in (select vu from public.arcade_visible_users() vu));
 
 -- Record one telemetry event for the calling user. p_event defaults to 'legacy'
 -- so a two-argument call from an older client is counted for the leaderboard
@@ -120,15 +136,16 @@ as $$
   )
   select
     b.user_id,
-    coalesce(
-      u.raw_user_meta_data ->> 'full_name',
-      u.raw_user_meta_data ->> 'name',
-      split_part(u.email, '@', 1)
-    ) as display_name,
+    public.arcade_display_name(b.user_id) as display_name,
     b.best_score,
     b.achieved_at
   from best b
-  join auth.users u on u.id = b.user_id
+  -- The visibility rule lives in arcade_scope.sql. Do not inline a subset of
+  -- it here: this board is one of five sites that ask the same question, and
+  -- they drifted apart last time. The set form, not arcade_may_see(b.user_id),
+  -- because a per-row qual on the DISTINCT ON key is pushed below the dedup
+  -- and then runs once per score row instead of once per player.
+  where b.user_id in (select vu from public.arcade_visible_users() vu)
   order by b.best_score desc, b.achieved_at asc
   limit least(greatest(coalesce(p_limit, 10), 1), 50);
 $$;
@@ -166,11 +183,11 @@ where event <> 'legacy'
   and game <> 'arcade'
 group by game;
 
-revoke all on function public.arcade_leaderboard(text, integer, timestamptz) from public;
+revoke all on function public.arcade_leaderboard(text, integer, timestamptz) from public, anon;
 grant execute on function public.arcade_leaderboard(text, integer, timestamptz) to authenticated;
-revoke all on function public.arcade_submit_score(text, integer, text) from public;
+revoke all on function public.arcade_submit_score(text, integer, text) from public, anon;
 grant execute on function public.arcade_submit_score(text, integer, text) to authenticated;
-revoke all on function public.arcade_personal_best(text) from public;
+revoke all on function public.arcade_personal_best(text) from public, anon;
 grant execute on function public.arcade_personal_best(text) to authenticated;
 grant select on public.arcade_usage_daily to authenticated;
 grant select on public.arcade_overview to authenticated;

@@ -100,12 +100,21 @@ Key patterns:
   position; merges double values at settle time, not slide time.
 - Score submission goes through `pluginScope` (survives tab close); game-phase
   coroutines use the tab component's scope (cancelled on destroy).
-- Backend: `supabase/arcade_schema.sql` (RLS insert-own/read-authenticated,
-  `arcade_submit_score` / `arcade_personal_best` / `arcade_leaderboard` RPCs).
+- Backend, in this order (see README for why the order is load-bearing): the
+  platform migration `BossConsole/.../20260908010000_org_visibility.sql`, then
+  `supabase/arcade_scope.sql` (Arcade's aliases for it), then
+  `supabase/arcade_schema.sql` (`arcade_scores`; RLS is insert-own and
+  read-only-what-the-visibility-rule-allows, NOT read-authenticated, plus the
+  `arcade_submit_score` / `arcade_personal_best` / `arcade_leaderboard` RPCs),
+  then `supabase/arcade_battleship.sql`, then `supabase/arcade_grants_audit.sql`
+  after any of them. A deployed project runs `arcade_events_migration.sql`
+  instead of `arcade_schema.sql`; it carries the same read policy.
 - Telemetry: every row carries an `ArcadeEvent` — `open` (tab opened), `start`
   (run began), `progress` (mid-run best sync), `final` (run ended). **A row is
   not a run: count `event = 'start'`,** or just read the `arcade_usage_daily`
-  view. `final` can fire twice for one 2048 run (win, then game over), and
+  view - but query it as `postgres`/`service_role`, because it is
+  `security_invoker` and so inherits the visibility read policy: as
+  `authenticated` it silently reports only the caller's visible slice. `final` can fire twice for one 2048 run (win, then game over), and
   `progress` fires every 2s while a 2048 run is live. `legacy` means "nobody
   said what this row was" — either written before this model landed, or by a
   pre-0.1.15 client whose 2-arg RPC call takes the default. Legacy rows count
@@ -150,6 +159,34 @@ javax.sound call is runCatching-wrapped: a missing/busy device flips the toggle
 to a muted "unavailable" state (a click retries) and never throws into the
 host. The audio thread is a daemon thread, not a pluginScope coroutine, so the
 watchdog's scope swap can't strand it; `dispose()` stops it and closes the line.
+
+**Who may see whom**: the rule is NOT Arcade's. It lives at the platform layer
+in `BossConsole/supabase/migrations/20260908010000_org_visibility.sql` as
+`public.org_visible_users()` - you, plus everyone sharing an active membership
+in an organisation `public.org_is_vetted()` accepts (not `is_system`, and
+`join_policy <> 'open'`). That excludes the catch-all `boss` org every account
+joins on signup, 153 members across 20 email domains; in practice the board is
+your `risa` colleagues. Poker's chat, lobby and leaderboard call the same
+function. `supabase/arcade_scope.sql` only aliases it.
+
+**A new game's read path must filter with the SET form,
+`where user_id in (select vu from public.arcade_visible_users() vu)` - NOT with
+`arcade_may_see(user_id)`.** The per-target form is for write paths only (it is
+revoked from `authenticated` for that reason). As a per-row qual the same rule
+gets pushed below a `distinct on` and evaluated once per underlying row: 2.7s
+across 29k score rows for 45 players, against 37ms for the set. Never re-derive
+either form at a call site. Five sites each asked a weaker version of this
+question - `arcade_players` asked only `<> auth.uid()`, the two boards asked
+nothing at all - which published the whole roster to every account in the
+project, and, because the project's default privileges grant EXECUTE to `anon`
+on every new function in schema `public`, to unauthenticated callers holding the
+anon key that ships in the public BossConsole repo. `revoke ... from public`
+does NOT undo that grant: every revoke must name `anon` explicitly, and
+`arcade_grants_audit.sql` is the sweep that proves it. The display-name rule
+(`arcade_display_name`) is likewise one function; it was seven near-copies, three
+of which disagreed about the metadata key. The email local part is still its last
+resort because no current player has any other name - which is exactly why the
+`arcade_may_see` gate has to hold.
 
 Battleship is the odd one out: async head-to-head rather than a scored run, so
 it has no leaderboard entry and its own `arcade_bs_standings` (W/L) instead.
