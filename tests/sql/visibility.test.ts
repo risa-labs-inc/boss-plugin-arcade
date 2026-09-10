@@ -1,6 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -39,8 +40,8 @@ const colleague = '00000000-0000-0000-0000-000000000002';
 const outsider = '00000000-0000-0000-0000-000000000003';
 const table = '10000000-0000-0000-0000-000000000001';
 
-const arcadeDir = new URL('../../supabase/', import.meta.url).pathname;
-for (const path of ['fresh', 'upgrade']) test(`merged Arcade visibility (${path})`, { skip: !arcadeDir }, async () => {
+const arcadeDir = fileURLToPath(new URL('../../supabase/', import.meta.url));
+for (const path of ['fresh', 'upgrade']) test(`merged Arcade visibility (${path})`, async () => {
   const db = await database();
   try {
     for (const name of ['arcade_scope.sql', 'arcade_schema.sql', 'arcade_battleship.sql']) {
@@ -82,5 +83,23 @@ for (const path of ['fresh', 'upgrade']) test(`merged Arcade visibility (${path}
     await db.exec('reset role; set role anon;');
     await assert.rejects(db.query("select * from arcade_leaderboard('test')"), /permission denied/);
     await assert.rejects(db.query('select * from arcade_scores'), /permission denied/);
+  } finally { await db.close(); }
+});
+
+
+for (const failure of ['missing RPC', 'inherited internal access']) test(`audit aborts on ${failure}`, async () => {
+  const db = await database();
+  try {
+    for (const name of ['arcade_scope.sql', 'arcade_schema.sql', 'arcade_battleship.sql'])
+      await db.exec(await readFile(resolve(arcadeDir, name), 'utf8'));
+    if (failure === 'missing RPC') {
+      await db.exec('drop function arcade_players(integer)');
+    } else {
+      await db.exec(`create role inherited_reader; grant inherited_reader to authenticated;
+        grant execute on function arcade_display_name(uuid) to inherited_reader`);
+    }
+    await assert.rejects(db.exec(await readFile(resolve(arcadeDir, 'arcade_grants_audit.sql'), 'utf8')),
+      /Arcade grant audit failed/);
+    await db.exec('rollback');
   } finally { await db.close(); }
 });
