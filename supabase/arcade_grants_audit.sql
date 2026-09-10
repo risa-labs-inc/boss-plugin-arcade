@@ -1,3 +1,5 @@
+begin;
+
 -- BOSS Arcade: grant lockdown + audit.
 --
 -- WHY THIS FILE EXISTS
@@ -18,7 +20,37 @@
 --
 -- Run this file after ANY arcade_*.sql change. It is idempotent.
 
--- 1. Take EXECUTE away from PUBLIC and anon on every arcade_* function,
+-- Share the exact allowlist between remediation and verification.
+create temporary table arcade_client_signatures(signature text primary key, required boolean default false) on commit drop;
+insert into pg_temp.arcade_client_signatures(signature) select unnest(array[
+    'public.arcade_submit_score(text,integer,text)',
+    'public.arcade_personal_best(text)', 'public.arcade_leaderboard(text,integer,timestamptz)',
+    'public.arcade_players(integer)',
+    -- RLS expressions run as the querying role, so this grant is required.
+    'public.arcade_visible_users()',
+    'public.arcade_bs_challenge(uuid,jsonb)', 'public.arcade_bs_accept(uuid,jsonb)',
+    'public.arcade_bs_decline(uuid)', 'public.arcade_bs_fire(uuid,integer)',
+    'public.arcade_bs_my_matches()', 'public.arcade_bs_match_detail(uuid)',
+    'public.arcade_bs_standings(integer)',
+    'public.arcade_my_credits()', 'public.arcade_charge_run(text)',
+    'public.arcade_request_credits(integer,text)', 'public.arcade_is_admin()',
+    'public.arcade_admin_requests()', 'public.arcade_admin_resolve(uuid,boolean,integer)'
+  ]);
+
+-- Credits RPCs are also defined by boss-poker/007 and /010. Keep their
+-- signatures coordinated. A game module may be absent, but once its tables
+-- exist its client RPCs are required, not silently optional after drift.
+update pg_temp.arcade_client_signatures set required = case
+  when signature like 'public.arcade_bs_%' or signature = 'public.arcade_players(integer)'
+    then to_regclass('public.arcade_matches') is not null
+  when signature in ('public.arcade_submit_score(text,integer,text)',
+      'public.arcade_personal_best(text)', 'public.arcade_leaderboard(text,integer,timestamptz)',
+      'public.arcade_visible_users()')
+    then to_regclass('public.arcade_scores') is not null
+  else to_regclass('public.arcade_credits') is not null
+end;
+
+-- 1. Take EXECUTE away from PUBLIC, anon and authenticated on every arcade_* function,
 --    including overloads and internal helpers.
 do $$
 declare
@@ -32,39 +64,26 @@ begin
       and p.proname like 'arcade\_%'
   loop
     execute format('revoke all on function %s from public', fn);
-    execute format('revoke all on function %s from anon', fn);
+    execute format('revoke all on function %s from anon, authenticated', fn);
   end loop;
 end $$;
 
--- 2. Hand EXECUTE back to `authenticated`, by name, only for the functions the
+-- 2. Hand EXECUTE back to `authenticated`, by exact signature, only for the functions the
 --    plugin actually calls. Anything not on this list stays unreachable over
---    PostgREST - which is what an internal helper such as
+--    PostgREST. Missing optional game/credits signatures are skipped, never
+--    matched by name to a new overload. This is what an internal helper such as
 --    arcade_bs_validate_fleet should be.
 do $$
 declare
   fn regprocedure;
-  callable constant text[] := array[
-    'arcade_submit_score', 'arcade_personal_best', 'arcade_leaderboard',
-    'arcade_players',
-    -- NOT optional: the arcade_scores read policy calls this, and an RLS
-    -- policy expression is evaluated as the querying role. Omit it and every
-    -- authenticated SELECT on arcade_scores fails with `permission denied for
-    -- function arcade_visible_users`, while audits 4a/4b still report healthy -
-    -- the sweep would say all-clear over broken reads.
-    'arcade_visible_users',
-    'arcade_bs_challenge', 'arcade_bs_accept', 'arcade_bs_decline',
-    'arcade_bs_fire', 'arcade_bs_my_matches', 'arcade_bs_match_detail',
-    'arcade_bs_standings',
-    'arcade_my_credits', 'arcade_charge_run', 'arcade_request_credits',
-    'arcade_is_admin', 'arcade_admin_requests', 'arcade_admin_resolve'
-  ];
+
 begin
   for fn in
     select p.oid::regprocedure
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
-      and p.proname = any (callable)
+      and p.oid in (select to_regprocedure(signature) from pg_temp.arcade_client_signatures)
   loop
     execute format('grant execute on function %s to authenticated', fn);
   end loop;
@@ -88,7 +107,7 @@ begin
   end loop;
 end $$;
 
--- 4. AUDIT. Both queries must return zero rows. Wire them into CI (or a
+-- 4. AUDIT. All four queries must return zero rows. Wire them into CI (or a
 --    pg_cron check) rather than trusting that step 1 was remembered: grantee 0
 --    is the PUBLIC pseudo-role, which every role including anon inherits.
 --
@@ -120,3 +139,49 @@ where n.nspname = 'public'
   and c.relkind in ('r', 'v', 'm', 'p')
   and (a.grantee = 0 or r.rolname = 'anon')
 order by 1, 2;
+
+-- 4c. Internal routines and unexpected overloads must not be client-callable.
+-- Check effective privileges, including grants inherited through other roles.
+select p.oid::regprocedure as function
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname like 'arcade\_%'
+  and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  and not exists (select 1 from pg_temp.arcade_client_signatures s
+                  where to_regprocedure(s.signature) = p.oid);
+
+-- 4d. Missing required signatures and lost intended grants are regressions too.
+select signature as missing_client_access
+from pg_temp.arcade_client_signatures
+where (required and to_regprocedure(signature) is null)
+   or (to_regprocedure(signature) is not null
+       and not has_function_privilege('authenticated', to_regprocedure(signature), 'EXECUTE'));
+
+-- Do not commit a warning-only revocation or a signature drift. Printed audit
+-- results help diagnosis; this postcondition makes unattended runs fail too.
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname like 'arcade\_%'
+      and (has_function_privilege('anon', p.oid, 'EXECUTE')
+        or (has_function_privilege('authenticated', p.oid, 'EXECUTE')
+          and not exists (select 1 from pg_temp.arcade_client_signatures s
+                          where to_regprocedure(s.signature) = p.oid)))
+  ) or exists (
+    select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname like 'arcade\_%'
+      and c.relkind in ('r','v','m','p')
+      and has_table_privilege('anon', c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+  ) or exists (
+    select 1 from pg_temp.arcade_client_signatures
+    where (required and to_regprocedure(signature) is null)
+      or (to_regprocedure(signature) is not null
+          and not has_function_privilege('authenticated', to_regprocedure(signature), 'EXECUTE'))
+  ) then
+    raise exception using errcode = '42501',
+      message = 'Arcade grant audit failed: inspect inherited access and required RPC signatures';
+  end if;
+end;
+$$;
+
+commit;

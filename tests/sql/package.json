@@ -1,0 +1,12 @@
+{
+  "name": "arcade-sql-regressions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test visibility.test.ts"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "tsx": "4.23.12"
+  }
+}

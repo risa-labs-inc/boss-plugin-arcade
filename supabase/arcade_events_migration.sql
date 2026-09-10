@@ -1,3 +1,7 @@
+-- Apply this complete file in one transaction so a failed replacement
+-- cannot leave the prior read policy dropped.
+begin;
+
 -- BOSS Arcade migration 002: make arcade_scores say what actually happened.
 --
 -- Why: before this, every row was an undifferentiated "score". 2048 throttle-
@@ -178,3 +182,5 @@ revoke all on function public.arcade_personal_best(text) from public, anon;
 grant execute on function public.arcade_personal_best(text) to authenticated;
 grant select on public.arcade_usage_daily to authenticated;
 grant select on public.arcade_overview to authenticated;
+
+commit;
