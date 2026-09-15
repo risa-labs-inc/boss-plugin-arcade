@@ -30,6 +30,9 @@ class MirrorDashEngine(private val random: Random = Random.Default) {
 
     var width = 0f; private set
     var height = 0f; private set
+    var viewportScale = 1f; private set
+    private var viewportWidth = 0f
+    private var viewportHeight = 0f
 
     var score = 0.0; private set
     var combo = 0; private set
@@ -58,14 +61,36 @@ class MirrorDashEngine(private val random: Random = Random.Default) {
     private var shardTimer = 1.2f
 
     fun resize(w: Float, h: Float) {
-        if (w == width && h == height) return
-        width = w
-        height = h
-        playerY = h * 0.78f
-        val count = min(150, (w * h / 8000f).toInt())
+        if (w <= 0f || h <= 0f || !w.isFinite() || !h.isFinite()) return
+        if (w == viewportWidth && h == viewportHeight) return
+        // Keep collision geometry in the first viewport's world units. Scaling
+        // only normalized gate X while retaining an 11dp spark radius could
+        // otherwise turn a harmless horizontal gap into a collision on resize.
+        if (width == 0f) width = w
+        viewportWidth = w
+        viewportHeight = h
+        viewportScale = w / width
+        val nextHeight = h / viewportScale
+        // HUD controls remain native dp; reserve their space in world units.
+        val nextPlayerY = min(nextHeight * 0.78f,
+            (nextHeight - 80f / viewportScale).coerceAtLeast(playerR))
+        if (height > 0f) {
+            val dy = nextPlayerY - playerY
+            obstacles.forEach { it.y += dy }
+            shards.forEach { it.y += dy }
+            particles.forEach { it.y += dy }
+            for (trail in listOf(trailA, trailB)) {
+                val shifted = trail.map { (x, y) -> x to y + dy }
+                trail.clear()
+                trail.addAll(shifted)
+            }
+        }
+        height = nextHeight
+        playerY = nextPlayerY
+        val count = min(150, (width * height / 8000f).toInt())
         stars = List(count) {
             Star(
-                x = random.nextFloat() * w, y = random.nextFloat() * h,
+                x = random.nextFloat() * width, y = random.nextFloat() * height,
                 z = 0.2f + random.nextFloat() * 0.8f,
                 s = 0.3f + random.nextFloat() * 1.4f,
                 p = random.nextFloat() * (Math.PI.toFloat() * 2),

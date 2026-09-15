@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package ai.rever.boss.plugin.dynamic.arcade.wordle
 
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeColors
@@ -8,11 +10,14 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,7 +56,7 @@ internal fun WordleHeader(state: WordleViewModel.UiState, onBack: () -> Unit) {
     // Title and chips share a row; the subtitle gets its own full-width line
     // below so nothing can collide on narrow tabs.
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
                 Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -71,7 +76,7 @@ internal fun WordleHeader(state: WordleViewModel.UiState, onBack: () -> Unit) {
                 fontWeight = FontWeight.ExtraBold,
                 color = ArcadeColors.Ink,
             )
-            Spacer(Modifier.weight(1f))
+
             WordleChip(label = "TODAY", value = if (state.points > 0) "+${state.points}" else "—")
             Spacer(Modifier.widthIn(min = 8.dp))
             WordleChip(label = "BEST", value = if (state.best > 0) "${state.best}" else "—")
@@ -140,11 +145,11 @@ internal fun WordleHelpCard(modifier: Modifier = Modifier) {
             color = ArcadeColors.InkSoft,
         )
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             HelpLegend(WordleColors.Correct, "right spot")
-            Spacer(Modifier.widthIn(min = 12.dp))
+
             HelpLegend(WordleColors.Present, "wrong spot")
-            Spacer(Modifier.widthIn(min = 12.dp))
+
             HelpLegend(WordleColors.Absent, "not in word")
         }
         Spacer(Modifier.height(8.dp))
@@ -229,6 +234,8 @@ internal fun BoxScope.WordleVeil(
             var copied by remember { mutableStateOf(false) }
             Column(
                 Modifier
+                    .widthIn(max = 480.dp)
+                    .verticalScroll(rememberScrollState())
                     .shadow(12.dp, RoundedCornerShape(18.dp))
                     .clip(RoundedCornerShape(18.dp))
                     .background(ArcadeColors.Chip)
@@ -256,7 +263,7 @@ internal fun BoxScope.WordleVeil(
                 Spacer(Modifier.height(4.dp))
                 NextWordCountdown(viewModel)
                 Spacer(Modifier.height(18.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ArcadePrimaryButton(
                         text = if (copied) "Copied!" else "Copy result",
                         onClick = {

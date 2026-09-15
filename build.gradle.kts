@@ -55,6 +55,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
     testImplementation(kotlin("test"))
+    testImplementation(compose.desktop.uiTestJUnit4)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     // compileOnly does not reach the test classpath, but LeaderboardServiceTest
     // fakes the host providers, so tests need the API on their own classpath.

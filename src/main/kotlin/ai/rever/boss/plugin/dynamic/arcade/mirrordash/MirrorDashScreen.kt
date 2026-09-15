@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -65,6 +66,7 @@ fun MirrorDashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .clipToBounds()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown || showLeaderboard) {
                     return@onPreviewKeyEvent false
@@ -107,7 +109,7 @@ fun MirrorDashScreen(
             @Suppress("UNUSED_EXPRESSION")
             frameTick // reading the tick invalidates this draw every frame
             viewModel.engine.resize(size.width / density, size.height / density)
-            drawMirrorDash(viewModel.engine, density)
+            drawMirrorDash(viewModel.engine, density * viewModel.engine.viewportScale)
         }
 
         MirrorDashHud(

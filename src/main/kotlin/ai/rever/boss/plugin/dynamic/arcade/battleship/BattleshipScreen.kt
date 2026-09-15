@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package ai.rever.boss.plugin.dynamic.arcade.battleship
 
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeColors
@@ -9,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,8 +40,9 @@ fun BattleshipScreen(
     viewModel: BattleshipViewModel,
     onBack: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    val scroll = key(viewModel.phase, viewModel.openMatchId) { rememberScrollState() }
+    Column(modifier = Modifier.fillMaxSize().testTag("battleship-screen-scroll").verticalScroll(scroll).padding(16.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ArcadeGhostButton("← Arcade", onClick = {
                 if (viewModel.phase == BattleshipViewModel.Phase.LOBBY) onBack()
                 else if (viewModel.phase == BattleshipViewModel.Phase.BOARD) viewModel.leaveBoard()
@@ -49,7 +55,7 @@ fun BattleshipScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
             )
-            Spacer(Modifier.weight(1f))
+
             if (viewModel.busy) {
                 Text("…", color = ArcadeColors.Muted, fontSize = 18.sp)
             }
@@ -88,8 +94,8 @@ fun BattleshipScreen(
 
 @Composable
 private fun BattleshipLobby(viewModel: BattleshipViewModel) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ArcadePrimaryButton("Challenge someone", onClick = { viewModel.openOpponentPicker() })
             Spacer(Modifier.width(8.dp))
             ArcadeGhostButton(
@@ -153,8 +159,8 @@ private fun BattleshipLobby(viewModel: BattleshipViewModel) {
                         fontSize = 12.sp,
                         modifier = Modifier.width(24.dp),
                     )
-                    Text(row.displayName, color = ArcadeColors.Ink, fontSize = 12.sp)
-                    Spacer(Modifier.weight(1f))
+                    Text(row.displayName, color = ArcadeColors.Ink, fontSize = 12.sp, modifier = Modifier.weight(1f))
+
                     Text(
                         "${row.wins}W · ${row.losses}L",
                         color = ArcadeColors.InkSoft,
@@ -249,8 +255,8 @@ private fun MatchRow(match: MatchSummary, viewModel: BattleshipViewModel) {
             )
             .padding(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     match.opponentName,
                     color = ArcadeColors.Ink,
@@ -295,6 +301,7 @@ private fun OpponentPicker(viewModel: BattleshipViewModel) {
         Column(
             modifier = Modifier
                 .widthIn(max = 340.dp)
+                .verticalScroll(rememberScrollState())
                 .clip(RoundedCornerShape(16.dp))
                 .background(ArcadeColors.Bg1)
                 .padding(16.dp)
@@ -306,7 +313,7 @@ private fun OpponentPicker(viewModel: BattleshipViewModel) {
             if (viewModel.opponents.isEmpty()) {
                 Text("Nobody else has played yet.", color = ArcadeColors.Muted, fontSize = 12.sp)
             } else {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Column {
                     for (player in viewModel.opponents) {
                         Box(
                             modifier = Modifier
@@ -330,7 +337,7 @@ private fun OpponentPicker(viewModel: BattleshipViewModel) {
 
 @Composable
 private fun BattleshipPlacement(viewModel: BattleshipViewModel) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             viewModel.placementTitle,
             color = ArcadeColors.Ink,
@@ -353,7 +360,7 @@ private fun BattleshipPlacement(viewModel: BattleshipViewModel) {
         )
 
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ArcadeGhostButton(
                 if (viewModel.orientation == BattleshipLogic.Orientation.HORIZONTAL) {
                     "Rotate (horizontal)"
@@ -393,7 +400,7 @@ private fun BattleshipPlacement(viewModel: BattleshipViewModel) {
         )
 
         Spacer(Modifier.height(14.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ArcadePrimaryButton(
                 "Submit fleet",
                 onClick = { viewModel.submitFleet() },
@@ -430,8 +437,8 @@ private fun BattleshipBoard(viewModel: BattleshipViewModel) {
         else -> "Waiting on ${detail.opponentName}"
     }
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 headline,
                 color = if (detail.myTurn && !detail.finished) ArcadeColors.PinkDeep else ArcadeColors.Ink,

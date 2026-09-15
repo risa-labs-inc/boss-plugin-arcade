@@ -26,6 +26,40 @@ object SkyStackColors {
     val Star = Color(0xFFEAE4FF)
 }
 
+/** Fit the complete moving-block path without changing the simulation's units. */
+internal data class SkyStackViewport(val scale: Float, val centerX: Float, val centerY: Float)
+
+internal fun skyStackPlayViewport(width: Float, height: Float, level: Int, cameraY: Float, fontScale: Float = 1f): SkyStackViewport {
+    val topInset = (if (height < 420f) 64f else 104f) * fontScale
+    val bottomInset = 76f * fontScale
+    val worldReach = SkyStackEngine.RANGE + SkyStackEngine.SIZE * 1.5f
+    val horizontalSpan = worldReach * 2f * 0.866f
+    val verticalSpan = worldReach + SkyStackEngine.BLOCK_HEIGHT
+    val scale = minOf(1f, (width - 24f).coerceAtLeast(1f) / horizontalSpan,
+        (height - topInset - bottomInset).coerceAtLeast(1f) / verticalSpan)
+    val layerTop = (level + 1) * SkyStackEngine.BLOCK_HEIGHT
+    val minY = -worldReach * 0.5f - layerTop
+    val maxY = worldReach * 0.5f - layerTop + SkyStackEngine.BLOCK_HEIGHT
+    val lowestCenter = topInset - minY * scale
+    val highestCenter = (height - bottomInset - maxY * scale).coerceAtLeast(lowestCenter)
+    val center = (height * 0.74f + cameraY * scale).coerceIn(lowestCenter, highestCenter)
+    return SkyStackViewport(scale, width / (2f * scale), center / scale)
+}
+
+internal fun skyStackOverviewViewport(width: Float, height: Float, level: Int, fontScale: Float = 1f): SkyStackViewport? {
+    val topInset = 72f * fontScale
+    // Overview controls have a bounded 120dp scrolling viewport.
+    val availableHeight = height - topInset - 120f
+    if (width < 144f || availableHeight < 24f) return null
+    val towerHeight = level * SkyStackEngine.BLOCK_HEIGHT + SkyStackEngine.SIZE
+    val scale = minOf(1f, (width - 24f) / (SkyStackEngine.SIZE * 2f * 0.866f), availableHeight / towerHeight)
+    return SkyStackViewport(scale, width / (2f * scale),
+        (topInset + availableHeight / 2f) / scale + level * SkyStackEngine.BLOCK_HEIGHT / 2f)
+}
+
+internal fun projectSkyStackPoint(x: Float, z: Float, y: Float, centerX: Float, centerY: Float): Offset =
+    Offset(centerX + (x - z) * 0.866f, centerY + (x + z) * 0.5f - y)
+
 /** Draw one frame of the native port using the original isometric projection. */
 fun DrawScope.drawSkyStack(
     engine: SkyStackEngine,
@@ -34,6 +68,7 @@ fun DrawScope.drawSkyStack(
     height: Float,
     showMovingBlock: Boolean,
     showFullTower: Boolean = false,
+    fontScale: Float = 1f,
 ) {
     if (width <= 0f || height <= 0f) return
     val altitude = min(1f, engine.score / 42f)
@@ -50,28 +85,17 @@ fun DrawScope.drawSkyStack(
         drawStars(engine, width, height, altitude)
     }
 
-    val towerHeight = engine.level * SkyStackEngine.BLOCK_HEIGHT + SkyStackEngine.SIZE
-    val overviewScale = if (showFullTower) {
-        min(
-            1f,
-            min(
-                (height - 150f).coerceAtLeast(120f) / towerHeight,
-                (width - 80f).coerceAtLeast(120f) / (SkyStackEngine.SIZE * 1.8f),
-            ),
-        ).coerceAtLeast(0.12f)
+    val viewport = if (showFullTower) {
+        skyStackOverviewViewport(width, height, engine.level, fontScale) ?: return
     } else {
-        1f
+        skyStackPlayViewport(width, height, engine.level, engine.cameraY, fontScale)
     }
-    val logicalWidth = width / overviewScale
+    val overviewScale = viewport.scale
     val logicalHeight = height / overviewScale
 
     scale(density * overviewScale, density * overviewScale, pivot = Offset.Zero) {
-        var centerX = logicalWidth / 2f
-        var centerY = if (showFullTower) {
-            logicalHeight / 2f + engine.level * SkyStackEngine.BLOCK_HEIGHT / 2f
-        } else {
-            logicalHeight * 0.74f + engine.cameraY
-        }
+        var centerX = viewport.centerX
+        var centerY = viewport.centerY
         if (engine.shakeTime > 0f) {
             centerX += (Random.nextFloat() - 0.5f) * 10f * engine.shakeTime
             centerY += (Random.nextFloat() - 0.5f) * 10f * engine.shakeTime
@@ -162,10 +186,7 @@ private fun DrawScope.drawBlock(
     centerY: Float,
     alpha: Float = 1f,
 ) {
-    fun project(x: Float, z: Float, y: Float): Offset = Offset(
-        x = centerX + (x - z) * 0.866f,
-        y = centerY + (x + z) * 0.5f - y,
-    )
+    fun project(x: Float, z: Float, y: Float): Offset = projectSkyStackPoint(x, z, y, centerX, centerY)
 
     val a = project(block.x, block.z, yTop)
     val b = project(block.x + block.w, block.z, yTop)

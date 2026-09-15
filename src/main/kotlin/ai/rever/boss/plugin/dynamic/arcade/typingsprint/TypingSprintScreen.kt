@@ -6,20 +6,29 @@ import ai.rever.boss.plugin.dynamic.arcade.ArcadePrimaryButton
 import ai.rever.boss.plugin.dynamic.arcade.LeaderboardOverlay
 import ai.rever.boss.plugin.dynamic.arcade.LeaderboardService
 import ai.rever.boss.plugin.dynamic.arcade.plainClickable
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -52,6 +61,7 @@ import androidx.compose.ui.unit.sp
  * keyboard input (IME, repeat, backspace); the passage renders per-character
  * feedback on top.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TypingSprintScreen(
     viewModel: TypingSprintViewModel,
@@ -60,13 +70,14 @@ fun TypingSprintScreen(
 ) {
     var showLeaderboard by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     LaunchedEffect(showLeaderboard, viewModel.phase) {
         if (!showLeaderboard) focusRequester.requestFocus()
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize().plainClickable { focusRequester.requestFocus() },
         contentAlignment = Alignment.Center,
     ) {
@@ -77,8 +88,10 @@ fun TypingSprintScreen(
             modifier = Modifier.size(1.dp).alpha(0f).focusRequester(focusRequester),
         )
 
+        val compact = maxWidth < 600.dp || maxHeight < 420.dp
         Column(
-            modifier = Modifier.widthIn(max = 640.dp).padding(24.dp),
+            modifier = Modifier.widthIn(max = 640.dp).fillMaxSize()
+                .verticalScroll(scrollState).padding(if (compact) 12.dp else 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(
@@ -91,7 +104,7 @@ fun TypingSprintScreen(
                 Column(Modifier.weight(1f).padding(start = 6.dp)) {
                     Text(
                         "Typing Sprint",
-                        fontSize = 32.sp,
+                        fontSize = if (compact) 24.sp else 32.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = ArcadeColors.Ink,
                     )
@@ -101,13 +114,18 @@ fun TypingSprintScreen(
                         color = ArcadeColors.InkSoft,
                     )
                 }
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 StatChip("TIME", "${(viewModel.timeLeftMs + 999) / 1000}s")
                 StatChip("WPM", "${viewModel.wpm}")
                 StatChip("ACC", "${viewModel.accuracy}%")
                 StatChip("BEST", "${viewModel.best}")
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(if (compact) 10.dp else 20.dp))
 
             when (viewModel.phase) {
                 TypingSprintViewModel.Phase.DONE -> ResultsPanel(
@@ -121,7 +139,10 @@ fun TypingSprintScreen(
                 else -> {
                     PassageCard(viewModel)
                     Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         ArcadeGhostButton("Leaderboard", onClick = { showLeaderboard = true })
                         ArcadeGhostButton("Restart", onClick = {
                             viewModel.restart()
@@ -139,6 +160,15 @@ fun TypingSprintScreen(
                 }
             }
         }
+
+        VerticalScrollbar(
+            rememberScrollbarAdapter(scrollState),
+            Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            style = LocalScrollbarStyle.current.copy(
+                unhoverColor = ArcadeColors.Muted.copy(alpha = 0.5f),
+                hoverColor = ArcadeColors.InkSoft,
+            ),
+        )
 
         if (showLeaderboard) {
             LeaderboardOverlay(
@@ -206,6 +236,7 @@ private fun PassageCard(viewModel: TypingSprintViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ResultsPanel(
     viewModel: TypingSprintViewModel,
@@ -232,7 +263,10 @@ private fun ResultsPanel(
             color = ArcadeColors.InkSoft,
         )
         Spacer(Modifier.height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             ArcadePrimaryButton("Go again", onClick = onAgain)
             ArcadeGhostButton("Leaderboard", onClick = onLeaderboard)
         }

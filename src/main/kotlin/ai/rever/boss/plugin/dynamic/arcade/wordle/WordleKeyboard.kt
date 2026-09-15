@@ -9,9 +9,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Backspace
+import androidx.compose.material.icons.outlined.KeyboardReturn
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,6 +106,7 @@ private fun Key(
 ) {
     Box(
         modifier = Modifier
+            .testTag("wordle-key-$label")
             .width(width)
             .height(40.dp)
             .clip(RoundedCornerShape(7.dp))
@@ -107,11 +114,17 @@ private fun Key(
             .plainClickable(onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = foreground,
-        )
+        if (label == "⌫") {
+            Icon(Icons.Outlined.Backspace, contentDescription = "Backspace", tint = foreground, modifier = Modifier.size(20.dp))
+        } else if (label == "ENTER") {
+            Icon(Icons.Outlined.KeyboardReturn, contentDescription = "Enter", tint = foreground, modifier = Modifier.size(20.dp))
+        } else {
+            Text(
+                label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = foreground,
+            )
+        }
     }
 }

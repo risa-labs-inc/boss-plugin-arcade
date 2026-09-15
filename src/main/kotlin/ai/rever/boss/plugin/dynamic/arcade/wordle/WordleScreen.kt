@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package ai.rever.boss.plugin.dynamic.arcade.wordle
 
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeColors
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +46,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -60,12 +64,13 @@ fun WordleScreen(
     val state by viewModel.state.collectAsState()
     var showLeaderboard by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    var inputFits by remember { mutableStateOf(true) }
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .onPreviewKeyEvent { event ->
-                if (showLeaderboard || state.veil) return@onPreviewKeyEvent false
+                if (!inputFits || showLeaderboard || state.veil) return@onPreviewKeyEvent false
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 if (event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) {
                     return@onPreviewKeyEvent false
@@ -108,13 +113,15 @@ fun WordleScreen(
             }
         }
 
-        val contentWidth = minOf(maxWidth - 40.dp, 430.dp).coerceAtLeast(240.dp)
+        val fits = maxWidth >= 280.dp
+        androidx.compose.runtime.SideEffect { inputFits = fits }
+        val contentWidth = minOf((maxWidth - 24.dp).coerceAtLeast(0.dp), 430.dp)
         val tileSize = minOf(
             (contentWidth - 24.dp) / 5,
             (maxHeight - 340.dp) / 6,
             56.dp,
         ).coerceAtLeast(36.dp)
-        val keyWidth = ((contentWidth - 60.dp) / 10).coerceIn(24.dp, 34.dp)
+        val keyWidth = minOf((contentWidth - 45.dp) / 10, (contentWidth - 40.dp) / 10.2f, 34.dp).coerceAtLeast(0.dp)
 
         // Fresh board: lead with the how-to card; the "?" button toggles it back.
         var helpOverride by remember { mutableStateOf<Boolean?>(null) }
@@ -136,9 +143,9 @@ fun WordleScreen(
             ) {
                 WordleHeader(state = state, onBack = onBack)
                 Spacer(Modifier.height(12.dp))
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ArcadeGhostButton(text = "Leaderboard", onClick = { showLeaderboard = true })
@@ -147,7 +154,7 @@ fun WordleScreen(
                         contentDescription = null,
                         tint = ArcadeColors.Muted,
                     )
-                    Spacer(Modifier.weight(1f))
+
                     if (state.phase != WordleViewModel.Phase.PLAYING && !state.veil) {
                         ArcadeGhostButton(text = "Result", onClick = { viewModel.showVeil() })
                     }
@@ -160,23 +167,27 @@ fun WordleScreen(
                     Spacer(Modifier.height(12.dp))
                     WordleHelpCard()
                 }
-                Spacer(Modifier.height(12.dp))
-                Box {
-                    WordleGrid(state = state, tileSize = tileSize)
-                    WordleToast(
-                        message = state.message,
-                        messageSeq = state.messageSeq,
-                        modifier = Modifier.align(Alignment.TopCenter),
+                if (fits) {
+                    Spacer(Modifier.height(12.dp))
+                    Box {
+                        WordleGrid(state = state, tileSize = tileSize)
+                        WordleToast(
+                            message = state.message,
+                            messageSeq = state.messageSeq,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    WordleKeyboard(
+                        keyStates = WordleLogic.keyStates(state.rows),
+                        onKey = viewModel::onKey,
+                        onEnter = viewModel::onEnter,
+                        onBackspace = viewModel::onBackspace,
+                        keyWidth = keyWidth,
                     )
+                } else {
+                    Text("Enlarge this pane to play Wordle.", color = ArcadeColors.Muted)
                 }
-                Spacer(Modifier.height(16.dp))
-                WordleKeyboard(
-                    keyStates = WordleLogic.keyStates(state.rows),
-                    onKey = viewModel::onKey,
-                    onEnter = viewModel::onEnter,
-                    onBackspace = viewModel::onBackspace,
-                    keyWidth = keyWidth,
-                )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "Type your guess and press Enter. Fewer guesses, more points.",

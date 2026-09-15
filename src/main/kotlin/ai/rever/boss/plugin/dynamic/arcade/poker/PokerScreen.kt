@@ -5,6 +5,8 @@ import ai.rever.boss.plugin.dynamic.arcade.CasinoColors
 import ai.rever.boss.plugin.dynamic.arcade.NeonSignTitle
 import ai.rever.boss.plugin.dynamic.arcade.neonSign
 import ai.rever.boss.plugin.dynamic.arcade.plainClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -142,6 +144,7 @@ private fun PokerUnavailableCard(message: String) {
             .clip(RoundedCornerShape(18.dp))
             .background(CasinoColors.Panel)
             .border(1.5.dp, CasinoColors.GoldDim.copy(alpha = 0.7f), RoundedCornerShape(18.dp))
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

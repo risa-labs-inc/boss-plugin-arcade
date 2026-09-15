@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package ai.rever.boss.plugin.dynamic.arcade.battleship
 
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeColors
@@ -9,8 +11,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.rever.boss.plugin.dynamic.arcade.plainClickable
@@ -64,65 +69,73 @@ fun BattleshipGrid(
     onCellClick: ((Int) -> Unit)? = null,
     highlightCell: Int? = null,
 ) {
-    // Only animate while there is something to point at — an infinite
-    // transition on every idle board would recompose it each frame for nothing.
-    val highlightAlpha = if (highlightCell != null) pulsingAlpha() else 0f
-    Box(
-        modifier = modifier
-            .widthIn(max = 380.dp)
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(14.dp))
-            .background(ArcadeColors.Frame)
-            .padding(6.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        if (maxWidth < 240.dp) {
+            Text("Enlarge this pane to use the Battleship board.", color = ArcadeColors.Muted)
+            return@BoxWithConstraints
+        }
+        // Only animate while there is something to point at — an infinite
+        // transition on every idle board would recompose it each frame for nothing.
+        val highlightAlpha = if (highlightCell != null) pulsingAlpha() else 0f
+        Box(
+            modifier = Modifier
+                .testTag("battleship-grid")
+                .widthIn(max = 380.dp)
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(14.dp))
+                .background(ArcadeColors.Frame)
+                .padding(6.dp),
         ) {
-            for (row in 0 until BattleshipLogic.SIZE) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    for (col in 0 until BattleshipLogic.SIZE) {
-                        val cell = BattleshipLogic.cellOf(row, col)
-                        val mark = markAt(cell)
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(fillFor(mark))
-                                .let { m ->
-                                    if (cell == highlightCell) {
-                                        m.border(
-                                            2.dp,
-                                            LastShotRing.copy(alpha = highlightAlpha),
-                                            RoundedCornerShape(4.dp),
-                                        )
-                                    } else {
-                                        m
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                for (row in 0 until BattleshipLogic.SIZE) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        for (col in 0 until BattleshipLogic.SIZE) {
+                            val cell = BattleshipLogic.cellOf(row, col)
+                            val mark = markAt(cell)
+                            Box(
+                                modifier = Modifier
+                                    .testTag("battleship-cell-$cell")
+                                    .weight(1f)
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(fillFor(mark))
+                                    .let { m ->
+                                        if (cell == highlightCell) {
+                                            m.border(
+                                                2.dp,
+                                                LastShotRing.copy(alpha = highlightAlpha),
+                                                RoundedCornerShape(4.dp),
+                                            )
+                                        } else {
+                                            m
+                                        }
                                     }
+                                    .let { m ->
+                                        if (onCellClick != null) m.plainClickable { onCellClick(cell) } else m
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                when (mark) {
+                                    // A miss is a dot; a hit is a cross. Colour alone
+                                    // would not survive a colour-blind player.
+                                    CellMark.MISS -> Box(
+                                        Modifier.size(6.dp).clip(CircleShape)
+                                            .background(ArcadeColors.Muted),
+                                    )
+                                    CellMark.HIT, CellMark.SUNK -> Text(
+                                        "✕",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    else -> Unit
                                 }
-                                .let { m ->
-                                    if (onCellClick != null) m.plainClickable { onCellClick(cell) } else m
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            when (mark) {
-                                // A miss is a dot; a hit is a cross. Colour alone
-                                // would not survive a colour-blind player.
-                                CellMark.MISS -> Box(
-                                    Modifier.size(6.dp).clip(CircleShape)
-                                        .background(ArcadeColors.Muted),
-                                )
-                                CellMark.HIT, CellMark.SUNK -> Text(
-                                    "✕",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                else -> Unit
                             }
                         }
                     }
@@ -157,7 +170,7 @@ fun BattleshipBoardLabel(text: String, hint: String? = null) {
 /** The fleet roster with each ship struck through once it is sunk. */
 @Composable
 fun FleetRoster(sunkIds: Set<String>, modifier: Modifier = Modifier) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (type in BattleshipLogic.FLEET) {
             val down = type.id in sunkIds
             Box(
@@ -195,7 +208,7 @@ fun PlacementRoster(
     onSelect: (BattleshipLogic.ShipType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (type in BattleshipLogic.FLEET) {
             val isPlaced = type.id in placedIds
             val isActive = type == activeShip

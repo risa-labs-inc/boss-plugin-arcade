@@ -131,7 +131,8 @@ class BattleshipViewModel(
         private set
     var lastOutcome by mutableStateOf<FireOutcome?>(null)
         private set
-    private var openMatchId: String? = null
+    internal var openMatchId by mutableStateOf<String?>(null)
+        private set
     private var pollJob: Job? = null
     private val sounds = BattleshipSoundPlayer(scope)
 

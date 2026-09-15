@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,36 +21,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * The 4x4 board: static cells underneath, animated tiles on top, veil overlay last.
+ * The 4x4 board: static cells underneath, animated tiles on top. End-of-run actions are hosted by the screen.
  * Sizing follows the original CSS: gap = boardSize * 11/430, cell = (board - 5*gap)/4.
  */
 @Composable
 internal fun Game2048Board(
     state: Game2048ViewModel.UiState,
-    viewModel: Game2048ViewModel,
     boardSize: Dp,
 ) {
-    val gap = boardSize * (11f / 430f)
-    val cell = (boardSize - gap * 5) / 4
-
-    Box(
+    BoxWithConstraints(
         Modifier
             .size(boardSize)
+            .testTag("2048-board")
             .clip(RoundedCornerShape(18.dp))
             .background(ArcadeColors.Frame),
     ) {
+        val measuredSize = minOf(maxWidth, maxHeight)
+        val gap = measuredSize * (11f / 430f)
+        val cell = (measuredSize - gap * 5) / 4
         repeat(Game2048Logic.SIZE) { r ->
             repeat(Game2048Logic.SIZE) { c ->
                 Box(
                     Modifier
                         .offset(x = gap + (cell + gap) * c, y = gap + (cell + gap) * r)
                         .size(cell)
+                        .testTag("2048-cell-$r-$c")
                         .clip(RoundedCornerShape(12.dp))
                         .background(ArcadeColors.Cell),
                 )
@@ -62,7 +65,6 @@ internal fun Game2048Board(
             }
         }
 
-        Game2048Veil(state = state, viewModel = viewModel)
     }
 }
 

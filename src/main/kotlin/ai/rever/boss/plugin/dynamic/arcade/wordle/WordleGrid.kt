@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,7 +53,7 @@ internal object WordleColors {
  */
 @Composable
 fun WordleGrid(state: WordleViewModel.UiState, tileSize: Dp) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = Modifier.testTag("wordle-grid"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (rowIndex in 0 until WordleLogic.MAX_GUESSES) {
             val committed = state.rows.getOrNull(rowIndex)
             when {

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -50,6 +51,8 @@ fun ArcadeBackground(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // Constrain all screens and shared overlays, including animated paint.
+            .clipToBounds()
             .background(
                 Brush.linearGradient(listOf(ArcadeColors.Bg1, ArcadeColors.Bg2)),
             ),

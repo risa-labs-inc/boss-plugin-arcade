@@ -1,17 +1,23 @@
 package ai.rever.boss.plugin.dynamic.arcade.mirrordash
 
 import ai.rever.boss.plugin.dynamic.arcade.plainClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,6 +28,8 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -40,15 +48,17 @@ private val PrimaryBg = Brush.horizontalGradient(
     1f to Color(0xFFB54EFF),
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BoxScope.MirrorDashHud(
     viewModel: MirrorDashViewModel,
     onBack: () -> Unit,
     onLeaderboard: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(18.dp),
-        verticalAlignment = Alignment.Top,
+    FlowRow(
+        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             "MIRROR DASH",
@@ -57,9 +67,7 @@ internal fun BoxScope.MirrorDashHud(
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
         )
-        Spacer(Modifier.weight(1f))
         HudStat("SCORE", viewModel.score)
-        Spacer(Modifier.width(20.dp))
         HudStat("BEST", viewModel.best)
     }
 
@@ -75,7 +83,7 @@ internal fun BoxScope.MirrorDashHud(
     }
 
     Row(
-        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(18.dp),
+        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(12.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(
@@ -122,6 +130,7 @@ private fun NeonIconButton(glyph: String, description: String, onClick: () -> Un
             .clip(CircleShape)
             .background(Color(0xB30B0916))
             .border(1.dp, Color(0x21FFFFFF), CircleShape)
+            .semantics { contentDescription = description }
             .plainClickable(onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -129,6 +138,7 @@ private fun NeonIconButton(glyph: String, description: String, onClick: () -> Un
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BoxScope.MirrorDashStartCard(onStart: () -> Unit) {
     NeonCard {
@@ -144,7 +154,8 @@ internal fun BoxScope.MirrorDashStartCard(onStart: () -> Unit) {
             lineHeight = 21.sp,
         )
         Spacer(Modifier.height(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
             HowChip("Tap / Space", "Reverse direction")
             HowChip("Collect diamonds", "Build combo")
             HowChip("Avoid blocks", "Keep both alive")
@@ -210,16 +221,18 @@ internal fun BoxScope.MirrorDashOverCard(
 
 @Composable
 private fun BoxScope.NeonCard(content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier.align(Alignment.Center).padding(20.dp),
+    BoxWithConstraints(
+        modifier = Modifier.align(Alignment.Center).padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 76.dp),
     ) {
+        val compact = maxWidth < 600.dp || maxHeight < 420.dp
         Column(
             modifier = Modifier
                 .widthIn(max = 520.dp)
                 .clip(RoundedCornerShape(28.dp))
                 .background(CardBg)
                 .border(1.dp, Color(0x21FFFFFF), RoundedCornerShape(28.dp))
-                .padding(40.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(if (compact) 20.dp else 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             content()
@@ -229,10 +242,18 @@ private fun BoxScope.NeonCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun CardTitle(plain: String, accent: String) {
-    Row {
-        Text(plain, color = MirrorDashColors.Ink, fontSize = 52.sp, fontFamily = FontFamily.Serif)
-        Text(accent, color = MirrorDashColors.Purple, fontSize = 52.sp, fontFamily = FontFamily.Serif)
-    }
+    Text(
+        androidx.compose.ui.text.buildAnnotatedString {
+            append(plain)
+            pushStyle(androidx.compose.ui.text.SpanStyle(color = MirrorDashColors.Purple))
+            append(accent)
+            pop()
+        },
+        color = MirrorDashColors.Ink,
+        fontSize = 40.sp,
+        fontFamily = FontFamily.Serif,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable
@@ -256,7 +277,7 @@ private fun NeonPrimaryButton(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(PrimaryBg)
             .plainClickable(onClick),

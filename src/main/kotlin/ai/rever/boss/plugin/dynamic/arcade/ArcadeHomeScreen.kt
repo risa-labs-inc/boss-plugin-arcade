@@ -9,6 +9,8 @@ import ai.rever.boss.plugin.dynamic.arcade.typingsprint.TypingSprintViewModel
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.hoverable
@@ -16,17 +18,20 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
@@ -80,109 +85,132 @@ fun ArcadeHomeScreen(
     // The casino floor is painted here, opaquely over the shared pastel
     // ArcadeBackground — game screens still rely on that one, so it never changes.
     CasinoBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MarqueeLights(Modifier.width(96.dp).height(12.dp))
-                Spacer(Modifier.width(16.dp))
-                NeonSignTitle("BOSS ARCADE")
-                Spacer(Modifier.width(16.dp))
-                MarqueeLights(Modifier.width(96.dp).height(12.dp))
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val compact = maxWidth < 600.dp || maxHeight < 420.dp
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(if (compact) 12.dp else 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = if (compact) Arrangement.Top else Arrangement.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!compact) {
+                        MarqueeLights(Modifier.width(96.dp).height(12.dp))
+                        Spacer(Modifier.width(16.dp))
+                    }
+                    NeonSignTitle("BOSS ARCADE", fontSize = if (compact) 28.sp else 44.sp)
+                    if (!compact) {
+                        Spacer(Modifier.width(16.dp))
+                        MarqueeLights(Modifier.width(96.dp).height(12.dp))
+                    }
+                }
+                Text(
+                    "Quick games. Team bragging rights.",
+                    fontSize = 14.sp,
+                    color = CasinoColors.TextSoft,
+                )
+                Spacer(Modifier.height(if (compact) 8.dp else 14.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    CreditsChip(credits, onRequest = onRequestCredits, compact = compact)
+                    AmbienceToggle(ambience)
+                    if (isAdmin) CasinoGhostButton("Admin", onClick = onOpenAdmin)
+                }
+                Spacer(Modifier.height(if (compact) 10.dp else 20.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    GameCard(
+                        compact = compact,
+                        title = "2048",
+                        subtitle = "Join tiles, chase the crown",
+                        hue = CasinoColors.Neon2048,
+                        badge = { TileBadge("2048", CasinoColors.Neon2048) },
+                        costLabel = cost(Game2048ViewModel.GAME),
+                        onClick = onPlay2048,
+                    )
+                    GameCard(
+                        compact = compact,
+                        title = "Mirror Dash",
+                        subtitle = "One tap, two sparks, don't crash",
+                        hue = CasinoColors.NeonMirrorDash,
+                        badge = { TileBadge("⟷", CasinoColors.NeonMirrorDash) },
+                        costLabel = cost(MirrorDashViewModel.GAME),
+                        onClick = onPlayMirrorDash,
+                    )
+                    GameCard(
+                        compact = compact,
+                        title = "Sky Stack",
+                        subtitle = "Stack from dusk to the stars",
+                        hue = CasinoColors.NeonSkyStack,
+                        badge = { TileBadge("▲", CasinoColors.NeonSkyStack) },
+                        costLabel = cost(SkyStackViewModel.GAME),
+                        onClick = onPlaySkyStack,
+                    )
+                    GameCard(
+                        compact = compact,
+                        title = "Typing Sprint",
+                        subtitle = "60 seconds, fast and clean",
+                        hue = CasinoColors.NeonTypingSprint,
+                        badge = { TileBadge("⌨", CasinoColors.NeonTypingSprint) },
+                        costLabel = cost(TypingSprintViewModel.GAME),
+                        onClick = onPlayTypingSprint,
+                    )
+                    GameCard(
+                        compact = compact,
+                        title = "Wordle",
+                        subtitle = "One shared word a day",
+                        hue = CasinoColors.NeonWordle,
+                        badge = { TileBadge("W", CasinoColors.NeonWordle) },
+                        costLabel = cost(WordleViewModel.GAME),
+                        onClick = onPlayWordle,
+                    )
+                    GameCard(
+                        compact = compact,
+                        // The badge counts games waiting on you: the whole point of an
+                        // async game is knowing there is a move to make without opening it.
+                        title = if (compact && battleshipWaiting > 0) "Battleship ($battleshipWaiting)" else "Battleship",
+                        subtitle = if (battleshipWaiting > 0) {
+                            "$battleshipWaiting waiting on you"
+                        } else {
+                            "Head to head, one shot at a time"
+                        },
+                        hue = CasinoColors.NeonBattleship,
+                        badge = {
+                            TileBadge(
+                                if (battleshipWaiting > 0) "$battleshipWaiting" else "⚓",
+                                CasinoColors.NeonBattleship,
+                            )
+                        },
+                        costLabel = cost(BattleshipViewModel.GAME),
+                        onClick = onPlayBattleship,
+                    )
+                    GameCard(
+                        compact = compact,
+                        // The flagship keeps its ♠ identity: gold neon over a felt-green badge.
+                        title = "Poker",
+                        subtitle = "No-Limit Hold'em · live multiplayer",
+                        hue = CasinoColors.NeonPoker,
+                        badge = { TileBadge("♠", CasinoColors.NeonPoker, fill = CasinoColors.PokerFelt) },
+                        onClick = onPlayPoker,
+                    )
+                }
+                ArcadeHomeInsights(leaderboard, battleshipService)
             }
-            Text(
-                "Quick games. Team bragging rights.",
-                fontSize = 14.sp,
-                color = CasinoColors.TextSoft,
+            VerticalScrollbar(
+                rememberScrollbarAdapter(scrollState),
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                style = LocalScrollbarStyle.current.copy(
+                    unhoverColor = CasinoColors.TextSoft.copy(alpha = 0.5f),
+                    hoverColor = CasinoColors.Gold,
+                ),
             )
-            Spacer(Modifier.height(14.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                CreditsChip(credits, onRequest = onRequestCredits)
-                AmbienceToggle(ambience)
-                if (isAdmin) CasinoGhostButton("Admin", onClick = onOpenAdmin)
-            }
-            Spacer(Modifier.height(20.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                GameCard(
-                    title = "2048",
-                    subtitle = "Join tiles, chase the crown",
-                    hue = CasinoColors.Neon2048,
-                    badge = { TileBadge("2048", CasinoColors.Neon2048) },
-                    costLabel = cost(Game2048ViewModel.GAME),
-                    onClick = onPlay2048,
-                )
-                GameCard(
-                    title = "Mirror Dash",
-                    subtitle = "One tap, two sparks, don't crash",
-                    hue = CasinoColors.NeonMirrorDash,
-                    badge = { TileBadge("⟷", CasinoColors.NeonMirrorDash) },
-                    costLabel = cost(MirrorDashViewModel.GAME),
-                    onClick = onPlayMirrorDash,
-                )
-                GameCard(
-                    title = "Sky Stack",
-                    subtitle = "Stack from dusk to the stars",
-                    hue = CasinoColors.NeonSkyStack,
-                    badge = { TileBadge("▲", CasinoColors.NeonSkyStack) },
-                    costLabel = cost(SkyStackViewModel.GAME),
-                    onClick = onPlaySkyStack,
-                )
-                GameCard(
-                    title = "Typing Sprint",
-                    subtitle = "60 seconds, fast and clean",
-                    hue = CasinoColors.NeonTypingSprint,
-                    badge = { TileBadge("⌨", CasinoColors.NeonTypingSprint) },
-                    costLabel = cost(TypingSprintViewModel.GAME),
-                    onClick = onPlayTypingSprint,
-                )
-                GameCard(
-                    title = "Wordle",
-                    subtitle = "One shared word a day",
-                    hue = CasinoColors.NeonWordle,
-                    badge = { TileBadge("W", CasinoColors.NeonWordle) },
-                    costLabel = cost(WordleViewModel.GAME),
-                    onClick = onPlayWordle,
-                )
-                GameCard(
-                    // The badge counts games waiting on you: the whole point of an
-                    // async game is knowing there is a move to make without opening it.
-                    title = "Battleship",
-                    subtitle = if (battleshipWaiting > 0) {
-                        "$battleshipWaiting waiting on you"
-                    } else {
-                        "Head to head, one shot at a time"
-                    },
-                    hue = CasinoColors.NeonBattleship,
-                    badge = {
-                        TileBadge(
-                            if (battleshipWaiting > 0) "$battleshipWaiting" else "⚓",
-                            CasinoColors.NeonBattleship,
-                        )
-                    },
-                    costLabel = cost(BattleshipViewModel.GAME),
-                    onClick = onPlayBattleship,
-                )
-                GameCard(
-                    // The flagship keeps its ♠ identity: gold neon over a felt-green badge.
-                    title = "Poker",
-                    subtitle = "No-Limit Hold'em · live multiplayer",
-                    hue = CasinoColors.NeonPoker,
-                    badge = { TileBadge("♠", CasinoColors.NeonPoker, fill = CasinoColors.PokerFelt) },
-                    onClick = onPlayPoker,
-                )
-            }
-            ArcadeHomeInsights(leaderboard, battleshipService)
         }
     }
 }
@@ -212,6 +240,7 @@ private fun TileBadge(glyph: String, hue: Color, fill: Color? = null) {
  */
 @Composable
 private fun GameCard(
+    compact: Boolean = false,
     title: String,
     subtitle: String,
     hue: Color,
@@ -239,24 +268,28 @@ private fun GameCard(
             .background(hue.copy(alpha = 0.03f + 0.05f * lit))
             .hoverable(hoverSource)
             .plainClickable(onClick)
-            .padding(20.dp),
+            .padding(if (compact) 12.dp else 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        badge()
-        Spacer(Modifier.height(12.dp))
+        if (!compact) {
+            badge()
+            Spacer(Modifier.height(12.dp))
+        }
         Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = CasinoColors.TextBright)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            subtitle,
-            fontSize = 12.sp,
-            color = CasinoColors.TextMuted,
-            textAlign = TextAlign.Center,
-            // Every card reserves exactly two subtitle lines so a short subtitle
-            // ("One shared word a day") cannot make its card shorter than the rest.
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (!compact) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                subtitle,
+                fontSize = 12.sp,
+                color = CasinoColors.TextMuted,
+                textAlign = TextAlign.Center,
+                // Every card reserves exactly two subtitle lines so a short subtitle
+                // ("One shared word a day") cannot make its card shorter than the rest.
+                minLines = 2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         Spacer(Modifier.height(6.dp))
         // The cost-tag slot is reserved even when there is no tag (poker charges
         // nothing here) so every card measures the same height as its neighbors.
@@ -277,7 +310,7 @@ private fun GameCard(
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(if (compact) 6.dp else 14.dp))
         CasinoNeonButton(text = "Play", hue = hue, onClick = onClick)
     }
 }

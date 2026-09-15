@@ -1,15 +1,22 @@
 package ai.rever.boss.plugin.dynamic.arcade.skystack
 
 import ai.rever.boss.plugin.dynamic.arcade.plainClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +26,8 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -36,6 +45,7 @@ private val ButtonBackground = Brush.verticalGradient(
 @Composable
 internal fun BoxScope.SkyStackHud(
     viewModel: SkyStackViewModel,
+    compact: Boolean = false,
     onBack: () -> Unit,
     onLeaderboard: () -> Unit,
 ) {
@@ -43,13 +53,13 @@ internal fun BoxScope.SkyStackHud(
         viewModel.phase != SkyStackViewModel.Phase.OVER
     ) {
         Column(
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 26.dp),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = if (compact) 12.dp else 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 "${viewModel.score}",
                 color = SkyStackColors.Ink,
-                fontSize = 48.sp,
+                fontSize = if (compact) 24.sp else 48.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 4.sp,
             )
@@ -77,15 +87,16 @@ internal fun BoxScope.SkyStackHud(
             fontSize = 11.sp,
             modifier = Modifier.weight(1f),
         )
-        SkyStackIconButton("‹", onBack)
+        SkyStackIconButton("‹", "Back to games", onBack)
         Spacer(Modifier.width(8.dp))
-        SkyStackIconButton("🏆", onLeaderboard)
+        SkyStackIconButton("🏆", "Leaderboard", onLeaderboard)
         if (viewModel.phase == SkyStackViewModel.Phase.PLAYING ||
             viewModel.phase == SkyStackViewModel.Phase.PAUSED
         ) {
             Spacer(Modifier.width(8.dp))
             SkyStackIconButton(
                 if (viewModel.phase == SkyStackViewModel.Phase.PAUSED) "▶" else "Ⅱ",
+                "Pause",
                 viewModel::togglePause,
             )
         }
@@ -183,10 +194,12 @@ internal fun BoxScope.SkyStackOverCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BoxScope.SkyStackTowerOverviewControls(
     score: Int,
     exportMessage: String?,
+    paneTooSmall: Boolean = false,
     onBack: () -> Unit,
     onExportSvg: () -> Unit,
     onExportPng: () -> Unit,
@@ -212,9 +225,13 @@ internal fun BoxScope.SkyStackTowerOverviewControls(
     }
 
     Column(
-        modifier = Modifier.align(Alignment.BottomCenter).padding(18.dp),
+        modifier = Modifier.align(Alignment.BottomCenter).heightIn(max = 120.dp).verticalScroll(rememberScrollState()).padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (paneTooSmall) {
+            Text("Enlarge this pane to see the full tower.", color = SkyStackColors.Ink, fontSize = 12.sp)
+            Spacer(Modifier.height(8.dp))
+        }
         exportMessage?.let {
             Text(
                 it,
@@ -224,11 +241,10 @@ internal fun BoxScope.SkyStackTowerOverviewControls(
             )
             Spacer(Modifier.height(8.dp))
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
             SkyStackOutlineButton("BACK", onBack)
-            Spacer(Modifier.width(10.dp))
             SkyStackOutlineButton("SAVE SVG", onExportSvg)
-            Spacer(Modifier.width(10.dp))
             SkyStackPrimaryButton("SAVE PNG", onExportPng)
         }
     }
@@ -236,14 +252,17 @@ internal fun BoxScope.SkyStackTowerOverviewControls(
 
 @Composable
 private fun BoxScope.SkyStackCard(content: @Composable () -> Unit) {
-    Box(modifier = Modifier.align(Alignment.Center).padding(20.dp)) {
+    BoxWithConstraints(modifier = Modifier.align(Alignment.Center)
+        .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 76.dp)) {
+        val compact = maxWidth < 600.dp || maxHeight < 420.dp
         Column(
             modifier = Modifier
                 .widthIn(max = 430.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(SkyStackColors.Card)
                 .border(1.dp, SkyStackColors.CardEdge, RoundedCornerShape(6.dp))
-                .padding(horizontal = 48.dp, vertical = 38.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = if (compact) 20.dp else 48.dp, vertical = if (compact) 20.dp else 38.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             content()
@@ -259,7 +278,7 @@ private fun SkyStackPrimaryButton(
 ) {
     Box(
         modifier = modifier
-            .height(50.dp)
+            .heightIn(min = 50.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(ButtonBackground)
             .plainClickable(onClick)
@@ -280,7 +299,7 @@ private fun SkyStackPrimaryButton(
 private fun SkyStackOutlineButton(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .height(50.dp)
+            .heightIn(min = 50.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(SkyStackColors.Card)
             .border(1.dp, SkyStackColors.CardEdge, RoundedCornerShape(4.dp))
@@ -299,13 +318,14 @@ private fun SkyStackOutlineButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SkyStackIconButton(glyph: String, onClick: () -> Unit) {
+private fun SkyStackIconButton(glyph: String, description: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(44.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(SkyStackColors.Card)
             .border(1.dp, SkyStackColors.CardEdge, RoundedCornerShape(6.dp))
+            .semantics { contentDescription = description }
             .plainClickable(onClick),
         contentAlignment = Alignment.Center,
     ) {
