@@ -37,6 +37,7 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 ├── LeaderboardOverlay.kt     # top-10 overlay
 ├── CreditsService.kt         # credits economy client (arcade_my_credits/charge/request/admin)
 ├── CreditsUi.kt              # balance chip, out-of-credits card, request dialog, admin panel
+├── EmbeddedWebAppViewModel.kt # shared embedded-browser VM + console-SSO URL for web-app games
 ├── game2048/
 │   ├── Game2048Logic.kt      # pure rules (port of the HTML logic block)
 │   ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil; cross-sitting resume
@@ -78,10 +79,13 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── WordleKeyboard.kt     # on-screen QWERTY with verdict coloring
 │   ├── WordleChrome.kt       # header, toast, result veil + countdown
 │   └── WordleScreen.kt       # assembly + physical keyboard input
-└── poker/
-    ├── PokerViewModel.kt     # owns the embedded-browser handle for the poker web app
-    ├── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
-    └── PokerAgentService.kt  # MCP poker client: console-SSO auth + edge-function ops over JDK HTTP
+├── poker/
+│   ├── PokerViewModel.kt     # EmbeddedWebAppViewModel for the poker web app
+│   ├── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
+│   └── PokerAgentService.kt  # MCP poker client: console-SSO auth + edge-function ops over JDK HTTP
+└── paarcade/
+    ├── PaArcadeViewModel.kt  # EmbeddedWebAppViewModel for the PA Arcade web app
+    └── PaArcadeScreen.kt     # header + browser Content(), loading + no-browser fallback
 ```
 
 2048 auto-saves the run after every settled move (`save.2048.<user>` via
@@ -138,8 +142,8 @@ cross-sitting resume charges nothing (same run continuing), Wordle charges on
 the day's first accepted guess, and Battleship (multiplayer) splits the hook:
 `canStartRun` gates the fleet submit, `chargeRun` fires only in `onSuccess`, so
 each player pays for their own seat once the server accepts the match. Poker
-charges nothing — buy-ins in the web app are its cost. **Degrade open is the
-invariant**: null provider, signed out, credits schema not deployed, offline,
+charges nothing - buy-ins in the web app are its cost. PA Arcade charges nothing
+either. **Degrade open is the invariant**: null provider, signed out, credits schema not deployed, offline,
 or any RPC/parse failure leaves `snapshot` null → credits UI hidden, every game
 free, nothing thrown into the host (LinkageError included). Never let a credits
 failure block a game. Costs shown before the first charge are the embedded
@@ -237,6 +241,22 @@ failure returns an error string to the agent, never a throw into the host. The
 embedded anon key is the project's PUBLIC anon key (ships in the web bundle);
 visibility is `surfacePoker` in `ArcadeMcpTools`: best-effort (poker still plays
 when no browser exists), first-use for reads, every call for mutations.
+
+**Embedded web-app games** (poker, PA Arcade) share `EmbeddedWebAppViewModel`:
+lazy browser creation, CREATING/READY/UNAVAILABLE phases, the no-browser /
+old-console fallback (the `browserServiceRaw as? BrowserService` guard), in-tab
+link handling and dispose on tab destroy. Before creating the browser it mints a
+console-SSO code through the app's own RPC (`mintSsoUrl`); `ssoCodeOrNull` is
+the one parse of a code (48 lowercase hex, bare or JSON-quoted) and the poker
+MCP client goes through it too. Any failure opens the plain URL, where the web
+app shows its own sign-in; it never blocks the game. A new web-app game is a
+subclass with a URL + RPC name, a screen, and the wiring in the checklist
+below; it needs no MCP tools, leaderboard key or credits charge.
+
+**PA Arcade** (`paarcade/`) embeds https://risa-pa-arcade.web.app. Its SSO RPC
+is `pa_arcade_sso_code()`, which lives with the web app's backend, not in this
+repo. If the RPC is unavailable or refuses the user, the tab degrades to the web
+app's plain sign-in page. It charges no Arcade credits.
 
 ## Adding a new game (checklist)
 

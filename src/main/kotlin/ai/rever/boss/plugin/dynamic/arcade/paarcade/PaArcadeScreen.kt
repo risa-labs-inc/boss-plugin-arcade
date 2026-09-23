@@ -1,4 +1,4 @@
-package ai.rever.boss.plugin.dynamic.arcade.poker
+package ai.rever.boss.plugin.dynamic.arcade.paarcade
 
 import ai.rever.boss.plugin.dynamic.arcade.CasinoBackground
 import ai.rever.boss.plugin.dynamic.arcade.CasinoColors
@@ -38,19 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Poker is a web app, not a Compose port: the screen is a header plus the
- * embedded browser. The table itself (and its own leaderboards) lives at
- * [POKER_URL]; when the host can't give us a browser, we say so and hand the
- * player the URL instead.
- *
- * Unlike the other games (faithful ports whose in-game pastel look is
- * protected), poker's "game" is the web app — already dark felt and gold — so
- * this chrome continues the casino floor from the home screen instead of
- * switching back to the pastel ArcadeColors.
+ * PA Arcade is a web app, not a Compose port: the screen is a header plus the
+ * embedded browser, exactly like poker's. The games (and their own scoring)
+ * live at [PA_ARCADE_URL]; when the host can't give us a browser, we say so
+ * and hand the player the URL instead. The chrome continues the casino floor
+ * from the home screen in PA Arcade's own coral hue.
  */
 @Composable
-fun PokerScreen(
-    viewModel: PokerViewModel,
+fun PaArcadeScreen(
+    viewModel: PaArcadeViewModel,
     onBack: () -> Unit,
 ) {
     LaunchedEffect(Unit) { viewModel.ensureBrowser() }
@@ -65,28 +61,26 @@ fun PokerScreen(
                     Icon(Icons.Outlined.ArrowBack, "Back to games", tint = CasinoColors.TextSoft)
                 }
                 Spacer(Modifier.width(6.dp))
-                // The card's identity from the home screen: gold ♠ on green felt.
+                // The card's identity from the home screen: coral "PA" badge.
                 Box(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(9.dp))
-                        .background(CasinoColors.PokerFelt)
-                        .border(1.5.dp, CasinoColors.NeonPoker.copy(alpha = 0.8f), RoundedCornerShape(9.dp)),
+                        .background(CasinoColors.NeonPaArcade.copy(alpha = 0.10f))
+                        .border(1.5.dp, CasinoColors.NeonPaArcade.copy(alpha = 0.8f), RoundedCornerShape(9.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("♠", color = CasinoColors.NeonPoker, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                    Text("PA", color = CasinoColors.NeonPaArcade, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 }
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    // A quiet gold neon sign — same treatment as the home marquee,
-                    // smaller and in poker's own hue.
                     NeonSignTitle(
-                        "Poker",
+                        "PA Arcade",
                         fontSize = 22.sp,
-                        neon = CasinoColors.NeonPoker,
-                        core = CasinoColors.GoldBright,
+                        neon = CasinoColors.NeonPaArcade,
+                        core = CasinoColors.TitleCore,
                     )
                     Text(
-                        "No-Limit Hold'em with the team.",
+                        "Prior-auth training games: Auth Desk, Units Rush, daily puzzles and more.",
                         fontSize = 12.sp,
                         color = CasinoColors.TextSoft,
                     )
@@ -98,22 +92,21 @@ fun PokerScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // Quiet gold neon rim around the table, drawn before the clip
-                    // so the halo bleeds onto the casino floor like the home cards.
-                    .neonSign(CasinoColors.NeonPoker, cornerRadius = 14.dp)
+                    // Neon rim drawn before the clip so the halo bleeds onto the floor.
+                    .neonSign(CasinoColors.NeonPaArcade, cornerRadius = 14.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(CasinoColors.PokerFeltDeep),
+                    .background(CasinoColors.PaArcadeDeep),
                 contentAlignment = Alignment.Center,
             ) {
                 when (viewModel.phase) {
-                    EmbeddedWebAppViewModel.Phase.CREATING -> PokerLoading()
-                    EmbeddedWebAppViewModel.Phase.UNAVAILABLE -> PokerUnavailableCard(viewModel.unavailableReason)
+                    EmbeddedWebAppViewModel.Phase.CREATING -> PaArcadeLoading()
+                    EmbeddedWebAppViewModel.Phase.UNAVAILABLE -> PaArcadeUnavailableCard(viewModel.unavailableReason)
                     EmbeddedWebAppViewModel.Phase.READY -> {
                         val handle = viewModel.browser()
                         if (handle != null) {
                             handle.Content()
                         } else {
-                            PokerUnavailableCard("The embedded browser went away.")
+                            PaArcadeUnavailableCard("The embedded browser went away.")
                         }
                     }
                 }
@@ -123,31 +116,31 @@ fun PokerScreen(
 }
 
 @Composable
-private fun PokerLoading() {
+private fun PaArcadeLoading() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         CircularProgressIndicator(
-            color = CasinoColors.NeonPoker,
+            color = CasinoColors.NeonPaArcade,
             strokeWidth = 2.dp,
             modifier = Modifier.size(28.dp),
         )
         Spacer(Modifier.height(10.dp))
-        Text("Shuffling up and dealing…", fontSize = 12.sp, color = CasinoColors.TextSoft)
+        Text("Opening PA Arcade…", fontSize = 12.sp, color = CasinoColors.TextSoft)
     }
 }
 
 @Composable
-private fun PokerUnavailableCard(message: String) {
+private fun PaArcadeUnavailableCard(message: String) {
     Column(
         modifier = Modifier
             .widthIn(max = 420.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(CasinoColors.Panel)
-            .border(1.5.dp, CasinoColors.GoldDim.copy(alpha = 0.7f), RoundedCornerShape(18.dp))
+            .border(1.5.dp, CasinoColors.NeonPaArcade.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "Poker table unavailable",
+            "PA Arcade unavailable",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = CasinoColors.TextBright,
@@ -164,11 +157,11 @@ private fun PokerUnavailableCard(message: String) {
         Spacer(Modifier.height(4.dp))
         SelectionContainer {
             Text(
-                POKER_URL,
+                PA_ARCADE_URL,
                 fontSize = 13.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
-                color = CasinoColors.GoldBright,
+                color = CasinoColors.NeonPaArcade,
             )
         }
     }

@@ -12,6 +12,8 @@ import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048Screen
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashScreen
 import ai.rever.boss.plugin.dynamic.arcade.mirrordash.MirrorDashViewModel
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeScreen
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeViewModel
 import ai.rever.boss.plugin.dynamic.arcade.poker.PokerScreen
 import ai.rever.boss.plugin.dynamic.arcade.poker.PokerViewModel
 import ai.rever.boss.plugin.dynamic.arcade.skystack.SkyStackScreen
@@ -85,6 +87,7 @@ class ArcadeTabComponent(
     private var wordle: WordleViewModel? = null
     private var battleship: BattleshipViewModel? = null
     private var poker: PokerViewModel? = null
+    private var paArcade: PaArcadeViewModel? = null
 
     init {
         services.activeArcadeTab = this
@@ -109,6 +112,8 @@ class ArcadeTabComponent(
             battleship?.onDisposed()
             // Releases the embedded browser (the poker table) with the tab.
             poker?.onDisposed()
+            // Same for the PA Arcade web app.
+            paArcade?.onDisposed()
             if (services.activeGame2048 === game2048) services.activeGame2048 = null
             if (services.activeWordle === wordle) services.activeWordle = null
             if (services.activeArcadeTab === this) services.activeArcadeTab = null
@@ -169,6 +174,16 @@ class ArcadeTabComponent(
     private fun poker(): PokerViewModel =
         poker ?: PokerViewModel(componentScope, services).also { poker = it }
 
+    /** Entry point: surface the embedded PA Arcade web app on screen. */
+    override fun showPaArcade(): PaArcadeViewModel {
+        val vm = paArcade()
+        screen = ArcadeScreen.PaArcade
+        return vm
+    }
+
+    private fun paArcade(): PaArcadeViewModel =
+        paArcade ?: PaArcadeViewModel(componentScope, services).also { paArcade = it }
+
     private fun wordle(): WordleViewModel =
         wordle ?: WordleViewModel(componentScope, services).also {
             wordle = it
@@ -202,6 +217,7 @@ class ArcadeTabComponent(
                         onPlayWordle = { screen = ArcadeScreen.Wordle },
                         onPlayBattleship = { screen = ArcadeScreen.Battleship },
                         onPlayPoker = { screen = ArcadeScreen.Poker },
+                        onPlayPaArcade = { screen = ArcadeScreen.PaArcade },
                         // Created here rather than on first play: the badge is the
                         // point, and a lazily-created VM would read 0 until you had
                         // already opened the game you were meant to be nudged into.
@@ -247,6 +263,10 @@ class ArcadeTabComponent(
                     viewModel = poker(),
                     onBack = { screen = ArcadeScreen.Home },
                 )
+                ArcadeScreen.PaArcade -> PaArcadeScreen(
+                    viewModel = paArcade(),
+                    onBack = { screen = ArcadeScreen.Home },
+                )
             }
 
             // Credits overlays live above every screen: a refused run start
@@ -278,4 +298,4 @@ class ArcadeTabComponent(
     }
 }
 
-enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint, Wordle, Battleship, Poker }
+enum class ArcadeScreen { Home, Game2048, MirrorDash, SkyStack, TypingSprint, Wordle, Battleship, Poker, PaArcade }

@@ -88,6 +88,12 @@ object CasinoColors {
 
     /** Deep table felt behind the poker screen's browser (loading/fallback backdrop). */
     val PokerFeltDeep = Color(0xFF102319)
+
+    /** PA Arcade (embedded web app): coral neon. */
+    val NeonPaArcade = Color(0xFFFF8A65)
+
+    /** Deep backdrop behind the PA Arcade screen's browser (loading/fallback). */
+    val PaArcadeDeep = Color(0xFF24140F)
 }
 
 /**

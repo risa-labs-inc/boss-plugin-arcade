@@ -1,106 +1,22 @@
 package ai.rever.boss.plugin.dynamic.arcade.poker
 
-import ai.rever.boss.plugin.browser.BrowserConfig
-import ai.rever.boss.plugin.browser.BrowserHandle
-import ai.rever.boss.plugin.browser.BrowserService
 import ai.rever.boss.plugin.dynamic.arcade.ArcadeServices
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import ai.rever.boss.plugin.dynamic.arcade.EmbeddedWebAppViewModel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 /** Where the poker web app lives. */
 const val POKER_URL = "https://boss-poker.web.app"
 
-/** poker_sso_code() returns 24 random bytes hex-encoded. Shared with [PokerAgentService]. */
-internal val SSO_CODE_SHAPE = Regex("[0-9a-f]{48}")
+/** The RPC that mints poker's one-time console-SSO code (see the poker schema). */
+internal const val POKER_SSO_RPC = "poker_sso_code"
 
 /**
- * Owns the embedded browser showing the poker web app. Like the game VMs, the
- * component keeps this for the tab's lifetime, so hopping Home <-> Poker never
- * reloads the table — you stay seated in your hand.
- *
- * The handle is a plain field, not Compose state: [phase] is what the screen
- * recomposes on, and the handle itself must survive the screen leaving the
- * composition (see above).
+ * Owns the embedded browser showing the poker web app. The component keeps
+ * this for the tab's lifetime, so hopping Home <-> Poker never reloads the
+ * table: you stay seated in your hand. All the browser/SSO mechanics live in
+ * [EmbeddedWebAppViewModel].
  */
 class PokerViewModel(
-    private val scope: CoroutineScope,
-    private val services: ArcadeServices,
-) {
-    enum class Phase { CREATING, READY, UNAVAILABLE }
-
-    var phase by mutableStateOf(Phase.CREATING)
-        private set
-    var unavailableReason by mutableStateOf("")
-        private set
-
-    private var handle: BrowserHandle? = null
-    private var creating = false
-
-    /**
-     * Lazily create the browser on first show (and again if the host has since
-     * invalidated the old handle, e.g. a browser-engine restart).
-     */
-    fun ensureBrowser() {
-        if (creating || handle?.isValid == true) return
-        handle?.dispose()
-        handle = null
-        // Raw is null on consoles whose plugin-api predates the browser package
-        // (as well as when the host has no JxBrowser); the `as?` never resolves
-        // BrowserService on a null receiver, so old hosts never load the class.
-        val raw = services.browserServiceRaw
-        if (raw == null) {
-            phase = Phase.UNAVAILABLE
-            unavailableReason = "Playing inside BOSS needs a newer BOSS console version."
-            return
-        }
-        val service = runCatching { raw as? BrowserService }.getOrNull()
-        if (service == null || !service.isAvailable()) {
-            phase = Phase.UNAVAILABLE
-            unavailableReason = "BOSS's embedded browser isn't available on this machine."
-            return
-        }
-        creating = true
-        phase = Phase.CREATING
-        scope.launch {
-            val created = runCatching { service.createBrowser(BrowserConfig(url = ssoUrl())) }.getOrNull()
-            if (created != null) {
-                // Table links (target=_blank, window.open) stay inside the tab.
-                created.setOpenInNewTabCallback { url -> scope.launch { created.loadUrl(url) } }
-                handle = created
-                phase = Phase.READY
-            } else {
-                phase = Phase.UNAVAILABLE
-                unavailableReason = "The embedded browser could not be created."
-            }
-            creating = false
-        }
-    }
-
-    /**
-     * Console SSO: mint a one-time code as the signed-in BOSS user (see
-     * poker_sso_code() in the poker schema) and hand it to the web app in the
-     * URL, so opening the tab signs the player in with zero clicks. Codes are
-     * single-use and 60-second, minted fresh per browser creation. Any
-     * failure (signed out, old schema, network) falls back to the plain URL,
-     * where the app shows its own email sign-in.
-     */
-    private suspend fun ssoUrl(): String {
-        val code = services.supabase
-            ?.let { runCatching { it.rpc("poker_sso_code", "{}").getOrNull() }.getOrNull() }
-            ?.trim()
-            ?.removeSurrounding("\"")
-            ?.takeIf { it.matches(SSO_CODE_SHAPE) }
-        return if (code != null) "$POKER_URL/?sso=$code" else POKER_URL
-    }
-
-    /** The live handle, or null when it isn't usable (screen shows the fallback). */
-    fun browser(): BrowserHandle? = handle?.takeIf { it.isValid }
-
-    fun onDisposed() {
-        handle?.dispose()
-        handle = null
-    }
-}
+    scope: CoroutineScope,
+    services: ArcadeServices,
+) : EmbeddedWebAppViewModel(scope, services, POKER_URL, POKER_SSO_RPC)

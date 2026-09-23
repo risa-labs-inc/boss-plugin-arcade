@@ -1,6 +1,7 @@
 package ai.rever.boss.plugin.dynamic.arcade.poker
 
 import ai.rever.boss.plugin.api.SupabaseDataProvider
+import ai.rever.boss.plugin.dynamic.arcade.ssoCodeOrNull
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -47,7 +48,8 @@ private val MOVE_KINDS = setOf("fold", "check", "call", "bet", "raise")
  * Lets an in-terminal agent play poker AS the signed-in BOSS user, over plain HTTP against the
  * poker edge function (protocol: boss-poker packages/protocol).
  *
- * Auth is the same console-SSO flow the embedded web app uses (see [PokerViewModel.ssoUrl]):
+ * Auth is the same console-SSO flow the embedded web app uses (see
+ * [ai.rever.boss.plugin.dynamic.arcade.mintSsoUrl]):
  * mint a one-time code via the poker_sso_code() RPC (runs as the signed-in user), exchange it at
  * the edge function for an email-OTP token hash, verify that with GoTrue for a regular access
  * token. The session is cached in memory; on expiry or any 401 the whole three-request flow just
@@ -220,11 +222,11 @@ class PokerAgentService(private val supabase: SupabaseDataProvider?) {
     /** The console-SSO flow: mint code (as the user) -> exchange -> verify -> access token. */
     private suspend fun signIn(): Session {
         val sb = supabase ?: fail(NO_SUPABASE)
-        val minted = sb.rpc("poker_sso_code", "{}").getOrElse {
+        val minted = sb.rpc(POKER_SSO_RPC, "{}").getOrElse {
             fail("Could not mint a poker sign-in code (is the user signed in to BOSS?): ${it.message}")
         }
-        val code = minted.trim().removeSurrounding("\"")
-        if (!code.matches(SSO_CODE_SHAPE)) {
+        val code = ssoCodeOrNull(minted)
+        if (code == null) {
             fail("poker_sso_code returned an unexpected value — the poker schema may not be deployed.")
         }
         val exchange = postJson(
