@@ -271,10 +271,15 @@ tab collects `auth.currentUser`). A yes is cached per signed-in user for the
 plugin session (so a later hiccup never pulls a game in progress); a no or a
 failure is asked again at the next check. An account switch reads as hidden
 until the new account's own answer arrives, and an answer that lands after the
-account changed is dropped. `isGranted` is the one gate: the home card, `showPaArcade()` (returns
-null and does not navigate otherwise), the screen's nav case (bounces home and
-releases the browser if access goes away) and the insights board all go through
-it. The web app enforces access itself; this only hides a card non-members
+account changed is dropped without touching the cache. Several tabs can check at
+once, so requests are numbered: a definitive answer applies only if no newer
+request's answer has been applied, and a failure (no answer) never downgrades a
+cached yes for the same user; a definitive `false` does revoke. `isGranted` is
+the one gate: the home card, `showPaArcade()` (returns null and does not
+navigate otherwise), the screen's nav case (bounces home and releases the
+browser if access goes away), the insights board and the `arcade_leaderboard`
+MCP tool (`mayReadLeaderboard`: any `pa-` key without access reads exactly like
+an unknown game with no scores, and no request is made) all go through it. The web app enforces access itself; this only hides a card non-members
 cannot use.
 
 The web app submits to `arcade_scores` under `pa-arcade` (score = career XP, so
