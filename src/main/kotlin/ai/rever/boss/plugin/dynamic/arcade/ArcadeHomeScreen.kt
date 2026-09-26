@@ -62,6 +62,8 @@ fun ArcadeHomeScreen(
     onPlayWordle: () -> Unit,
     onPlayBattleship: () -> Unit,
     onPlayPoker: () -> Unit,
+    /** PA Arcade's card and leaderboard show only for users with access. */
+    paArcadeVisible: Boolean,
     onPlayPaArcade: () -> Unit,
     battleshipWaiting: Int = 0,
 ) {
@@ -182,7 +184,7 @@ fun ArcadeHomeScreen(
                     badge = { TileBadge("♠", CasinoColors.NeonPoker, fill = CasinoColors.PokerFelt) },
                     onClick = onPlayPoker,
                 )
-                GameCard(
+                if (paArcadeVisible) GameCard(
                     // An embedded web app like poker; no cost label because it
                     // charges no Arcade credits. The card fits ~40 characters in
                     // its two subtitle lines; the full pitch is on the game's header.
@@ -193,7 +195,7 @@ fun ArcadeHomeScreen(
                     onClick = onPlayPaArcade,
                 )
             }
-            ArcadeHomeInsights(leaderboard, battleshipService)
+            ArcadeHomeInsights(leaderboard, battleshipService, paArcadeVisible)
         }
     }
 }

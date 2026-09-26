@@ -85,6 +85,7 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   └── PokerAgentService.kt  # MCP poker client: console-SSO auth + edge-function ops over JDK HTTP
 └── paarcade/
     ├── PaArcadeViewModel.kt  # EmbeddedWebAppViewModel for the PA Arcade web app
+    ├── PaArcadeAccess.kt     # fail-closed card visibility (pa_arcade_access) + leaderboard key
     └── PaArcadeScreen.kt     # header + browser Content(), loading + no-browser fallback
 ```
 
@@ -251,12 +252,35 @@ the one parse of a code (48 lowercase hex, bare or JSON-quoted) and the poker
 MCP client goes through it too. Any failure opens the plain URL, where the web
 app shows its own sign-in; it never blocks the game. A new web-app game is a
 subclass with a URL + RPC name, a screen, and the wiring in the checklist
-below; it needs no MCP tools, leaderboard key or credits charge.
+below; it needs no MCP tools or credits charge, and a leaderboard entry only if
+the web app itself submits to `arcade_scores` (PA Arcade does, see below).
 
 **PA Arcade** (`paarcade/`) embeds https://risa-pa-arcade.web.app. Its SSO RPC
 is `pa_arcade_sso_code()`, which lives with the web app's backend, not in this
 repo. If the RPC is unavailable or refuses the user, the tab degrades to the web
 app's plain sign-in page. It charges no Arcade credits.
+
+**PA Arcade access fails CLOSED** (the opposite of credits): the web app admits
+members of one organisation only, so `PaArcadeAccess` (plugin-level, on
+`ArcadeServices`) asks the backend's `pa_arcade_access()` (bare boolean, lives
+with the web app's backend) and shows the card, the screen and the `pa-arcade`
+board only on a literal `true` for the user signed in right now. Unknown, null
+provider, signed out, RPC missing, an unexpected body or any throw all mean
+hidden. It is checked on each Arcade tab open and on every sign-in change (the
+tab collects `auth.currentUser`). A yes is cached per signed-in user for the
+plugin session (so a later hiccup never pulls a game in progress); a no or a
+failure is asked again at the next check. An account switch reads as hidden
+until the new account's own answer arrives, and an answer that lands after the
+account changed is dropped. `isGranted` is the one gate: the home card, `showPaArcade()` (returns
+null and does not navigate otherwise), the screen's nav case (bounces home and
+releases the browser if access goes away) and the insights board all go through
+it. The web app enforces access itself; this only hides a card non-members
+cannot use.
+
+The web app submits to `arcade_scores` under `pa-arcade` (score = career XP, so
+best = current XP and the weekly window shows XP reached this week, not XP
+gained) and per-game `pa-<gameId>` keys. Only `pa-arcade` is shown here, in
+`ArcadeHomeInsights`; the per-game boards live inside the web app.
 
 ## Adding a new game (checklist)
 

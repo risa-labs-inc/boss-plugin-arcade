@@ -49,9 +49,16 @@ original single-file HTML versions.
   - **PA Arcade** - an embedded web game. Like poker, the card embeds an
     external web app (https://risa-pa-arcade.web.app) and signs you in with your
     BOSS account via a one-time console-SSO code; if that code can't be minted
-    the app opens on its own sign-in page instead. It charges no Arcade credits and has no
-    `arcade_scores` entry. Without an embedded browser, the screen shows the
-    URL to open externally.
+    the app opens on its own sign-in page instead. It charges no Arcade credits.
+    Without an embedded browser, the screen shows the URL to open externally.
+    The web app is open to members of one organisation only, so the card is
+    shown only when the backend's `pa_arcade_access()` check says yes for the
+    signed-in user; while that answer is unknown, or if the check fails in any
+    way, the card stays hidden (the web app enforces access itself either
+    way). The web app submits to `arcade_scores` too: its overall key
+    `pa-arcade` (score = career XP, so the weekly board shows XP reached this
+    week) appears on the home "On the board" strip as "PA Arcade (XP)" for the
+    same users; its per-game `pa-<gameId>` boards live inside the web app.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in

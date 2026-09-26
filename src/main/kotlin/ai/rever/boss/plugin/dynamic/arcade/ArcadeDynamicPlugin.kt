@@ -10,6 +10,7 @@ import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeAccess
 import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeViewModel
 import ai.rever.boss.plugin.dynamic.arcade.poker.PokerAgentService
 import ai.rever.boss.plugin.dynamic.arcade.poker.PokerViewModel
@@ -32,7 +33,8 @@ interface ArcadeGameHost {
 
     fun showPoker(): PokerViewModel
 
-    fun showPaArcade(): PaArcadeViewModel
+    /** Null (and no navigation) unless [PaArcadeAccess.isGranted]. */
+    fun showPaArcade(): PaArcadeViewModel?
 }
 
 /**
@@ -90,6 +92,12 @@ class ArcadeServices(
      * Independent of any tab: the embedded web app is only the spectator view.
      */
     val pokerAgent: PokerAgentService = PokerAgentService(supabase)
+
+    /**
+     * Whether the PA Arcade card, screen and leaderboard are shown. Plugin-level
+     * so the answer is cached once per session (per signed-in user), not per tab.
+     */
+    val paArcadeAccess: PaArcadeAccess = PaArcadeAccess(supabase, auth)
 
     /**
      * The one shared casino-ambience player. Plugin-level on purpose: several
