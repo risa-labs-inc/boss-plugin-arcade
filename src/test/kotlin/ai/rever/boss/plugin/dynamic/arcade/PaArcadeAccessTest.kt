@@ -291,6 +291,20 @@ class PaArcadeAccessTest {
     }
 
     @Test
+    fun mcpLeaderboardAsksForAccessWhenNoTabHasChecked() = runTest {
+        val supabase = FakeSupabase { name, _ ->
+            if (name == PA_ARCADE_ACCESS_RPC) Result.success("true") else Result.success(board)
+        }
+        val auth = FakeAuth("u1")
+        // No refresh() yet: no Arcade tab has asked this session.
+        val fresh = PaArcadeAccess(supabase, auth)
+        assertEquals(
+            "Leaderboard for pa-arcade:\n1. ana - 1200",
+            leaderboardToolResult(LeaderboardService(supabase, auth), fresh, "pa-arcade", 10).text,
+        )
+    }
+
+    @Test
     fun mcpLeaderboardShowsPaBoardsWithAccessAndOtherBoardsAlways() = runTest {
         val supabase = FakeSupabase { name, _ ->
             if (name == PA_ARCADE_ACCESS_RPC) Result.success("true") else Result.success(board)

@@ -6,6 +6,7 @@ import ai.rever.boss.plugin.api.McpToolProvider
 import ai.rever.boss.plugin.api.McpToolResult
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
 import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeAccess
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.isPaArcadeLeaderboardKey
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.delay
@@ -295,6 +296,10 @@ internal suspend fun leaderboardToolResult(
     limit: Int,
 ): McpToolResult {
     val empty = McpToolResult("No scores recorded for '$game' yet.")
+    // Ask fresh for access-gated boards (free when a yes is already cached), so a user
+    // with access is not told a board is empty just because no Arcade tab has checked
+    // yet. The server enforces the same rule on the data itself.
+    if (isPaArcadeLeaderboardKey(game) && !access.isGranted) access.refresh()
     if (!access.mayReadLeaderboard(game)) return empty
     leaderboard.awaitPendingSubmits()
     return leaderboard.topScores(game, limit).fold(
