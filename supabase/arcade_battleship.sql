@@ -408,6 +408,9 @@ $$;
 -- Returns the caller's OWN fleet and both players' shots. It must never return
 -- the opponent's fleet — that is the one field that would break the game, so
 -- the select list is written out explicitly rather than dumping a row.
+-- NOTE: in production this function also ignores arcade_scores rows whose game key starts
+-- with 'pa-' (the embedded PA Arcade web app, added by that app's own migration), so
+-- those rows never surface here. Keep that condition if this function is redefined.
 create or replace function public.arcade_bs_match_detail(p_match uuid)
 returns jsonb
 language plpgsql
@@ -472,6 +475,9 @@ $$;
 -- Who you can challenge: everyone the caller is allowed to see who has touched
 -- the Arcade. `<> auth.uid()` is NOT the rule - it was, and that is how this
 -- function came to publish the whole roster. The rule is arcade_visible_users.
+-- NOTE: in production this function also ignores arcade_scores rows whose game key starts
+-- with 'pa-' (the embedded PA Arcade web app, added by that app's own migration), so
+-- those rows never surface here. Keep that condition if this function is redefined.
 create or replace function public.arcade_players(p_limit integer default 50)
 returns table (user_id uuid, display_name text)
 language sql

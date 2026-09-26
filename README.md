@@ -46,6 +46,19 @@ original single-file HTML versions.
     available, the screen shows the table URL to open externally instead.
     In-terminal agents can also play at the table as you, through the
     `poker_*` MCP tools below.
+  - **PA Arcade** - an embedded web game. Like poker, the card embeds an
+    external web app (https://risa-pa-arcade.web.app) and signs you in with your
+    BOSS account via a one-time console-SSO code; if that code can't be minted
+    the app opens on its own sign-in page instead. It charges no Arcade credits.
+    Without an embedded browser, the screen shows the URL to open externally.
+    The web app is open to members of one organisation only, so the card is
+    shown only when the backend's `pa_arcade_access()` check says yes for the
+    signed-in user; while that answer is unknown, or if the check fails in any
+    way, the card stays hidden (the web app enforces access itself either
+    way). The web app submits to `arcade_scores` too: its overall key
+    `pa-arcade` (score = career XP, so the weekly board shows XP reached this
+    week) appears on the home "On the board" strip as "PA Arcade (XP)" for the
+    same users; its per-game `pa-<gameId>` boards live inside the web app.
 
   The home screen is a picker, so new games slot in as additional screens
   sharing the same leaderboard plumbing (each game is a `game` key in
@@ -57,7 +70,7 @@ Every game run costs Arcade credits — play money (✦), tracked server-side pe
 user with a weekly floor of 10,000 (balances refill up to the floor every
 Monday). The home screen shows your balance as a chip and each game card wears
 its price tag; poker charges nothing at run start because its buy-ins are the
-cost, handled inside the poker web app.
+cost, handled inside the poker web app, and PA Arcade is free.
 
 - **Charging is latency-free by design**: starting a run checks only the
   *cached* balance and fires the real `arcade_charge_run` in the background,

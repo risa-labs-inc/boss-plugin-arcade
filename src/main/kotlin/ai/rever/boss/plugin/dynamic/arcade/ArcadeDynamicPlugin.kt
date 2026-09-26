@@ -10,6 +10,8 @@ import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipNotifier
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipViewModel
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeAccess
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeViewModel
 import ai.rever.boss.plugin.dynamic.arcade.poker.PokerAgentService
 import ai.rever.boss.plugin.dynamic.arcade.poker.PokerViewModel
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
@@ -30,6 +32,9 @@ interface ArcadeGameHost {
     fun showBattleship(): BattleshipViewModel
 
     fun showPoker(): PokerViewModel
+
+    /** Null (and no navigation) unless [PaArcadeAccess.isGranted]. */
+    fun showPaArcade(): PaArcadeViewModel?
 }
 
 /**
@@ -44,15 +49,16 @@ class ArcadeServices(
     val credits: CreditsService,
     val battleship: BattleshipService,
     val splitView: SplitViewOperations?,
-    /** Poker mints one-time console-SSO codes through this (see poker_sso_code()). */
+    /** Poker and PA Arcade mint one-time console-SSO codes through this (see mintSsoUrl). */
     val supabase: SupabaseDataProvider?,
     /**
      * The host's BrowserService, deliberately typed as Any?. Older BOSS
      * consoles bundle a plugin-api without the browser package; naming the
      * type here (or reading context.browserService unguarded) is a
      * NoSuchMethodError at register() that kills the WHOLE arcade on them
-     * (bit us in 0.1.22). Poker casts it back with `as?` behind a null check,
-     * so browser classes only ever resolve on hosts that have them.
+     * (bit us in 0.1.22). EmbeddedWebAppViewModel (poker, PA Arcade) casts it
+     * back with `as?` behind a null check, so browser classes only ever
+     * resolve on hosts that have them.
      */
     val browserServiceRaw: Any?,
 ) {
@@ -86,6 +92,12 @@ class ArcadeServices(
      * Independent of any tab: the embedded web app is only the spectator view.
      */
     val pokerAgent: PokerAgentService = PokerAgentService(supabase)
+
+    /**
+     * Whether the PA Arcade card, screen and leaderboard are shown. Plugin-level
+     * so the answer is cached once per session (per signed-in user), not per tab.
+     */
+    val paArcadeAccess: PaArcadeAccess = PaArcadeAccess(supabase, auth)
 
     /**
      * The one shared casino-ambience player. Plugin-level on purpose: several

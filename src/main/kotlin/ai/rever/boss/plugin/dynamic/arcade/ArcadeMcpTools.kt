@@ -5,6 +5,8 @@ import ai.rever.boss.plugin.api.McpToolHandler
 import ai.rever.boss.plugin.api.McpToolProvider
 import ai.rever.boss.plugin.api.McpToolResult
 import ai.rever.boss.plugin.dynamic.arcade.game2048.Game2048ViewModel
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PaArcadeAccess
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.isPaArcadeLeaderboardKey
 import ai.rever.boss.plugin.dynamic.arcade.wordle.WordleViewModel
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.delay
@@ -31,22 +33,7 @@ class ArcadeMcpTools(
             handler = McpToolHandler { args ->
                 val game = args.string("game") ?: "2048"
                 val limit = (args.int("limit") ?: 10).coerceIn(1, 50)
-                services.leaderboard.awaitPendingSubmits()
-                services.leaderboard.topScores(game, limit).fold(
-                    onSuccess = { entries ->
-                        if (entries.isEmpty()) {
-                            McpToolResult("No scores recorded for '$game' yet.")
-                        } else {
-                            val lines = entries.mapIndexed { i, e ->
-                                "${i + 1}. ${e.displayName ?: "Player"} — ${e.bestScore}"
-                            }
-                            McpToolResult("Leaderboard for $game:\n" + lines.joinToString("\n"))
-                        }
-                    },
-                    onFailure = { e ->
-                        McpToolResult("Leaderboard unavailable: ${e.message}", isError = true)
-                    },
-                )
+                leaderboardToolResult(services.leaderboard, services.paArcadeAccess, game, limit)
             },
         ),
         McpToolDefinition(
@@ -295,4 +282,39 @@ class ArcadeMcpTools(
             )
         return block(game)
     }
+}
+
+/**
+ * The arcade_leaderboard tool's answer. Boards the caller may not see (the
+ * `pa-` keys without PA Arcade access) read exactly like an unknown game with
+ * no scores, with no request made.
+ */
+internal suspend fun leaderboardToolResult(
+    leaderboard: LeaderboardService,
+    access: PaArcadeAccess,
+    game: String,
+    limit: Int,
+): McpToolResult {
+    val empty = McpToolResult("No scores recorded for '$game' yet.")
+    // Ask fresh for access-gated boards (free when a yes is already cached), so a user
+    // with access is not told a board is empty just because no Arcade tab has checked
+    // yet. The server enforces the same rule on the data itself.
+    if (isPaArcadeLeaderboardKey(game) && !access.isGranted) access.refresh()
+    if (!access.mayReadLeaderboard(game)) return empty
+    leaderboard.awaitPendingSubmits()
+    return leaderboard.topScores(game, limit).fold(
+        onSuccess = { entries ->
+            if (entries.isEmpty()) {
+                empty
+            } else {
+                val lines = entries.mapIndexed { i, e ->
+                    "${i + 1}. ${e.displayName ?: "Player"} - ${e.bestScore}"
+                }
+                McpToolResult("Leaderboard for $game:\n" + lines.joinToString("\n"))
+            }
+        },
+        onFailure = { e ->
+            McpToolResult("Leaderboard unavailable: ${e.message}", isError = true)
+        },
+    )
 }

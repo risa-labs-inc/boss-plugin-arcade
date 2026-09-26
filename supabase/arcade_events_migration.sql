@@ -100,6 +100,12 @@ as $$
 $$;
 
 drop function if exists public.arcade_leaderboard(text, integer, timestamptz);
+-- NOTE: in production this function also carries one guard for 'pa-' keys (the embedded
+-- PA Arcade web app's boards), added by that app's own migration:
+--   and (p_game not like 'pa-%' or (select public.pa_arcade_access()))
+-- inside the `best` CTE's WHERE, plus restrictive read/insert policies on arcade_scores
+-- for 'pa-' rows. Re-applying this file would drop the guard: keep that line (and check
+-- pg_get_functiondef) if arcade_leaderboard is ever redefined here.
 create or replace function public.arcade_leaderboard(
   p_game text,
   p_limit integer default 10,

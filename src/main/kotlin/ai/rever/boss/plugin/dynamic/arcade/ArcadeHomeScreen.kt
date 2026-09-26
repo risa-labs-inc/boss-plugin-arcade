@@ -62,6 +62,9 @@ fun ArcadeHomeScreen(
     onPlayWordle: () -> Unit,
     onPlayBattleship: () -> Unit,
     onPlayPoker: () -> Unit,
+    /** PA Arcade's card and leaderboard show only for users with access. */
+    paArcadeVisible: Boolean,
+    onPlayPaArcade: () -> Unit,
     battleshipWaiting: Int = 0,
 ) {
     // "Tab focus" refresh: the home screen recomposes from scratch on every
@@ -181,8 +184,18 @@ fun ArcadeHomeScreen(
                     badge = { TileBadge("♠", CasinoColors.NeonPoker, fill = CasinoColors.PokerFelt) },
                     onClick = onPlayPoker,
                 )
+                if (paArcadeVisible) GameCard(
+                    // An embedded web app like poker; no cost label because it
+                    // charges no Arcade credits. The card fits ~40 characters in
+                    // its two subtitle lines; the full pitch is on the game's header.
+                    title = "PA Arcade",
+                    subtitle = "Prior-auth training games, daily puzzles",
+                    hue = CasinoColors.NeonPaArcade,
+                    badge = { TileBadge("PA", CasinoColors.NeonPaArcade) },
+                    onClick = onPlayPaArcade,
+                )
             }
-            ArcadeHomeInsights(leaderboard, battleshipService)
+            ArcadeHomeInsights(leaderboard, battleshipService, paArcadeVisible)
         }
     }
 }
@@ -218,7 +231,7 @@ private fun GameCard(
     badge: @Composable () -> Unit,
     onClick: () -> Unit,
     // Per-run price tag ("100 ✦"). Null = credits hidden (degraded) or a game
-    // that charges nothing here (poker's buy-ins live in the web app).
+    // that charges nothing here (poker's buy-ins live in the web app; PA Arcade is free).
     costLabel: String? = null,
 ) {
     val hoverSource = remember { MutableInteractionSource() }

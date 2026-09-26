@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.rever.boss.plugin.dynamic.arcade.battleship.BattleshipService
 import ai.rever.boss.plugin.dynamic.arcade.battleship.Standing
+import ai.rever.boss.plugin.dynamic.arcade.paarcade.PA_ARCADE_LEADERBOARD_KEY
 import java.time.Duration
 import java.time.OffsetDateTime
 
@@ -45,12 +46,14 @@ private data class GameBoard(val title: String, val entries: List<LeaderboardEnt
 fun ArcadeHomeInsights(
     leaderboard: LeaderboardService,
     battleship: BattleshipService,
+    /** Adds the PA Arcade XP board; true only for users with access. */
+    paArcadeVisible: Boolean = false,
 ) {
     var boards by remember { mutableStateOf<List<GameBoard>?>(null) }
     var standings by remember { mutableStateOf<List<Standing>>(emptyList()) }
     var weekly by remember { mutableStateOf(false) }
 
-    LaunchedEffect(weekly) {
+    LaunchedEffect(weekly, paArcadeVisible) {
         if (!leaderboard.isAvailable) return@LaunchedEffect
         leaderboard.awaitPendingSubmits()
         val since = if (weekly) LeaderboardService.weekStartIso() else null
@@ -60,6 +63,11 @@ fun ArcadeHomeInsights(
             "sky-stack" to "Sky Stack",
             "typing-sprint" to "Typing Sprint",
             "wordle" to "Wordle",
+        ).plus(
+            // The web app's overall board: best score = career XP, so the
+            // weekly window shows the XP players have reached this week, not
+            // the XP they gained this week.
+            if (paArcadeVisible) listOf(PA_ARCADE_LEADERBOARD_KEY to "PA Arcade (XP)") else emptyList(),
         ).map { (key, title) ->
             GameBoard(title, leaderboard.topScores(key, 15, sinceIso = since).getOrNull().orEmpty())
         }

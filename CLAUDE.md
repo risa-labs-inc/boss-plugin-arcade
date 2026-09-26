@@ -37,6 +37,7 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 ├── LeaderboardOverlay.kt     # top-10 overlay
 ├── CreditsService.kt         # credits economy client (arcade_my_credits/charge/request/admin)
 ├── CreditsUi.kt              # balance chip, out-of-credits card, request dialog, admin panel
+├── EmbeddedWebAppViewModel.kt # shared embedded-browser VM + console-SSO URL for web-app games
 ├── game2048/
 │   ├── Game2048Logic.kt      # pure rules (port of the HTML logic block)
 │   ├── Game2048ViewModel.kt  # state machine; 105ms slide → settle → veil; cross-sitting resume
@@ -78,10 +79,14 @@ src/main/kotlin/ai/rever/boss/plugin/dynamic/arcade/
 │   ├── WordleKeyboard.kt     # on-screen QWERTY with verdict coloring
 │   ├── WordleChrome.kt       # header, toast, result veil + countdown
 │   └── WordleScreen.kt       # assembly + physical keyboard input
-└── poker/
-    ├── PokerViewModel.kt     # owns the embedded-browser handle for the poker web app
-    ├── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
-    └── PokerAgentService.kt  # MCP poker client: console-SSO auth + edge-function ops over JDK HTTP
+├── poker/
+│   ├── PokerViewModel.kt     # EmbeddedWebAppViewModel for the poker web app
+│   ├── PokerScreen.kt        # header + browser Content(), loading + no-browser fallback
+│   └── PokerAgentService.kt  # MCP poker client: console-SSO auth + edge-function ops over JDK HTTP
+└── paarcade/
+    ├── PaArcadeViewModel.kt  # EmbeddedWebAppViewModel for the PA Arcade web app
+    ├── PaArcadeAccess.kt     # fail-closed card visibility (pa_arcade_access) + leaderboard key
+    └── PaArcadeScreen.kt     # header + browser Content(), loading + no-browser fallback
 ```
 
 2048 auto-saves the run after every settled move (`save.2048.<user>` via
@@ -138,8 +143,8 @@ cross-sitting resume charges nothing (same run continuing), Wordle charges on
 the day's first accepted guess, and Battleship (multiplayer) splits the hook:
 `canStartRun` gates the fleet submit, `chargeRun` fires only in `onSuccess`, so
 each player pays for their own seat once the server accepts the match. Poker
-charges nothing — buy-ins in the web app are its cost. **Degrade open is the
-invariant**: null provider, signed out, credits schema not deployed, offline,
+charges nothing - buy-ins in the web app are its cost. PA Arcade charges nothing
+either. **Degrade open is the invariant**: null provider, signed out, credits schema not deployed, offline,
 or any RPC/parse failure leaves `snapshot` null → credits UI hidden, every game
 free, nothing thrown into the host (LinkageError included). Never let a credits
 failure block a game. Costs shown before the first charge are the embedded
@@ -237,6 +242,50 @@ failure returns an error string to the agent, never a throw into the host. The
 embedded anon key is the project's PUBLIC anon key (ships in the web bundle);
 visibility is `surfacePoker` in `ArcadeMcpTools`: best-effort (poker still plays
 when no browser exists), first-use for reads, every call for mutations.
+
+**Embedded web-app games** (poker, PA Arcade) share `EmbeddedWebAppViewModel`:
+lazy browser creation, CREATING/READY/UNAVAILABLE phases, the no-browser /
+old-console fallback (the `browserServiceRaw as? BrowserService` guard), in-tab
+link handling and dispose on tab destroy. Before creating the browser it mints a
+console-SSO code through the app's own RPC (`mintSsoUrl`); `ssoCodeOrNull` is
+the one parse of a code (48 lowercase hex, bare or JSON-quoted) and the poker
+MCP client goes through it too. Any failure opens the plain URL, where the web
+app shows its own sign-in; it never blocks the game. A new web-app game is a
+subclass with a URL + RPC name, a screen, and the wiring in the checklist
+below; it needs no MCP tools or credits charge, and a leaderboard entry only if
+the web app itself submits to `arcade_scores` (PA Arcade does, see below).
+
+**PA Arcade** (`paarcade/`) embeds https://risa-pa-arcade.web.app. Its SSO RPC
+is `pa_arcade_sso_code()`, which lives with the web app's backend, not in this
+repo. If the RPC is unavailable or refuses the user, the tab degrades to the web
+app's plain sign-in page. It charges no Arcade credits.
+
+**PA Arcade access fails CLOSED** (the opposite of credits): the web app admits
+members of one organisation only, so `PaArcadeAccess` (plugin-level, on
+`ArcadeServices`) asks the backend's `pa_arcade_access()` (bare boolean, lives
+with the web app's backend) and shows the card, the screen and the `pa-arcade`
+board only on a literal `true` for the user signed in right now. Unknown, null
+provider, signed out, RPC missing, an unexpected body or any throw all mean
+hidden. It is checked on each Arcade tab open and on every sign-in change (the
+tab collects `auth.currentUser`). A yes is cached per signed-in user for the
+plugin session (so a later hiccup never pulls a game in progress); a no or a
+failure is asked again at the next check. An account switch reads as hidden
+until the new account's own answer arrives, and an answer that lands after the
+account changed is dropped without touching the cache. Several tabs can check at
+once, so requests are numbered: a definitive answer applies only if no newer
+request's answer has been applied, and a failure (no answer) never downgrades a
+cached yes for the same user; a definitive `false` does revoke. `isGranted` is
+the one gate: the home card, `showPaArcade()` (returns null and does not
+navigate otherwise), the screen's nav case (bounces home and releases the
+browser if access goes away), the insights board and the `arcade_leaderboard`
+MCP tool (`mayReadLeaderboard`: any `pa-` key without access reads exactly like
+an unknown game with no scores, and no request is made) all go through it. The web app enforces access itself; this only hides a card non-members
+cannot use.
+
+The web app submits to `arcade_scores` under `pa-arcade` (score = career XP, so
+best = current XP and the weekly window shows XP reached this week, not XP
+gained) and per-game `pa-<gameId>` keys. Only `pa-arcade` is shown here, in
+`ArcadeHomeInsights`; the per-game boards live inside the web app.
 
 ## Adding a new game (checklist)
 
