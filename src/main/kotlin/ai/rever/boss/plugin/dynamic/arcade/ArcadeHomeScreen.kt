@@ -117,6 +117,17 @@ fun ArcadeHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                if (paArcadeVisible) GameCard(
+                    // First card when shown: the headline game for the users who can open it.
+                    // An embedded web app like poker; no cost label because it
+                    // charges no Arcade credits. The card fits ~40 characters in
+                    // its two subtitle lines; the full pitch is on the game's header.
+                    title = "PA Arcade",
+                    subtitle = "Prior-auth training games, daily puzzles",
+                    hue = CasinoColors.NeonPaArcade,
+                    badge = { TileBadge("PA", CasinoColors.NeonPaArcade) },
+                    onClick = onPlayPaArcade,
+                )
                 GameCard(
                     title = "2048",
                     subtitle = "Join tiles, chase the crown",
@@ -183,16 +194,6 @@ fun ArcadeHomeScreen(
                     hue = CasinoColors.NeonPoker,
                     badge = { TileBadge("♠", CasinoColors.NeonPoker, fill = CasinoColors.PokerFelt) },
                     onClick = onPlayPoker,
-                )
-                if (paArcadeVisible) GameCard(
-                    // An embedded web app like poker; no cost label because it
-                    // charges no Arcade credits. The card fits ~40 characters in
-                    // its two subtitle lines; the full pitch is on the game's header.
-                    title = "PA Arcade",
-                    subtitle = "Prior-auth training games, daily puzzles",
-                    hue = CasinoColors.NeonPaArcade,
-                    badge = { TileBadge("PA", CasinoColors.NeonPaArcade) },
-                    onClick = onPlayPaArcade,
                 )
             }
             ArcadeHomeInsights(leaderboard, battleshipService, paArcadeVisible)
