@@ -57,17 +57,17 @@ fun ArcadeHomeInsights(
         if (!leaderboard.isAvailable) return@LaunchedEffect
         leaderboard.awaitPendingSubmits()
         val since = if (weekly) LeaderboardService.weekStartIso() else null
-        boards = listOf(
+        // The web app's overall board leads when visible: best score = career XP, so
+        // the weekly window shows the XP players have reached this week, not the XP
+        // they gained this week.
+        boards = (if (paArcadeVisible) listOf(PA_ARCADE_LEADERBOARD_KEY to "PA Arcade (XP)") else emptyList()).plus(
+            listOf(
             "2048" to "2048",
             "mirror-dash" to "Mirror Dash",
             "sky-stack" to "Sky Stack",
             "typing-sprint" to "Typing Sprint",
             "wordle" to "Wordle",
-        ).plus(
-            // The web app's overall board: best score = career XP, so the
-            // weekly window shows the XP players have reached this week, not
-            // the XP they gained this week.
-            if (paArcadeVisible) listOf(PA_ARCADE_LEADERBOARD_KEY to "PA Arcade (XP)") else emptyList(),
+            ),
         ).map { (key, title) ->
             GameBoard(title, leaderboard.topScores(key, 15, sinceIso = since).getOrNull().orEmpty())
         }
