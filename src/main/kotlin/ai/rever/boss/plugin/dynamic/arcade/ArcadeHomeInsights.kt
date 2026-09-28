@@ -17,6 +17,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -113,7 +114,9 @@ fun ArcadeHomeInsights(
         ) {
             for (board in loaded) {
                 if (board.entries.isNotEmpty()) {
-                    GameBoardCard(board, leaderboard.currentUserId)
+                    // Keyed by game: each card keeps its own expanded state when the list
+                    // shifts (a board prepended or skipped).
+                    key(board.title) { GameBoardCard(board, leaderboard.currentUserId) }
                 }
             }
             if (standings.isNotEmpty()) {
